@@ -49,6 +49,10 @@ class GameState {
         this.updateTimerDisplay();
     }
     
+    get duration() {
+        return this.GAME_DURATION;
+    }
+    
     updateDurationUI() {
         const duration30sBtn = document.getElementById('duration-30s');
         const duration120sBtn = document.getElementById('duration-120s');

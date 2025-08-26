@@ -6,6 +6,8 @@ import uiManager from './modules/UIManager.js';
 import dancerSystem from './modules/DancerSystem.js';
 import recordingSystem from './modules/RecordingSystem.js';
 import gameEngine from './modules/GameEngine.js';
+import quantizationSystem from './modules/QuantizationSystem.js';
+import harmonySystem from './modules/HarmonySystem.js';
 
 class RhythmGame {
     constructor() {
@@ -60,7 +62,18 @@ class RhythmGame {
             showMySongs: () => this.showMySongs(),
             showMyDancers: () => this.showMyDancers(),
             setDuration: (seconds) => this.setDuration(seconds),
-            closeCamera: () => this.closeCamera()
+            closeCamera: () => this.closeCamera(),
+            
+            // Quantization callbacks
+            toggleQuantization: () => this.toggleQuantization(),
+            setQuantizationType: (type) => this.setQuantizationType(type),
+            toggleBeatGrid: () => this.toggleBeatGrid(),
+            toggleBeatSync: () => this.toggleBeatSync(),
+            toggleQuantizePreview: () => this.toggleQuantizePreview(),
+            
+            // Harmony system callbacks
+            toggleHarmonicSuggestions: () => this.toggleHarmonicSuggestions(),
+            toggleAutoHarmonize: () => this.toggleAutoHarmonize()
         };
         
         uiManager.setCallbacks(callbacks);
@@ -116,6 +129,21 @@ class RhythmGame {
         
         await audioSystem.startAudio();
         
+        // Initialize beat grid for playback
+        if (gameEngine.showBeatGrid || gameEngine.beatSyncEnabled) {
+            gameEngine.startBeatGrid(gameState.duration);
+        }
+        
+        // Show quantization and harmony controls during gameplay
+        uiManager.showQuantizationControls();
+        uiManager.showHarmonyControls();
+        this.updateQuantizationUI();
+        this.updateHarmonyUI();
+        
+        // Show musical context
+        const musicalContext = audioSystem.getMusicalContext();
+        uiManager.showMusicalContext(musicalContext);
+        
         // Start game timer
         gameState.gameTimerId = setInterval(() => {
             const shouldEnd = gameState.updateTimer();
@@ -150,6 +178,17 @@ class RhythmGame {
         audioSystem.stopAudio();
         dancerSystem.stopPoseAnimation();
         
+        // Clean up quantization systems
+        if (gameState.isRecording) {
+            recordingSystem.stopRecordingMetronome();
+            uiManager.hideMeasureCounter();
+        }
+        gameEngine.stopBeatGrid();
+        uiManager.hideQuantizationControls();
+        uiManager.hideHarmonyControls();
+        uiManager.hideMusicalContext();
+        uiManager.hideBeatPosition();
+        
         if (gameState.isRecording) {
             this.saveRecordedSong();
             uiManager.showMainMenu("Rhythm Beat", "Song Saved!");
@@ -159,15 +198,40 @@ class RhythmGame {
     }
     
     startRecording(songName, baseScore) {
+        // Adjust recording duration to complete measures if quantization enabled
+        const idealDuration = recordingSystem.getIdealRecordingDuration(gameState.duration);
+        if (idealDuration !== gameState.duration) {
+            gameState.setDuration(idealDuration);
+        }
+        
         gameState.startRecording(songName, baseScore);
         uiManager.clearPlayArea();
         uiManager.showRecordingUI();
         
         audioSystem.startAudio();
         
+        // Start recording with metronome and harmony features
+        recordingSystem.startRecordingWithHarmony(gameState.gameStartTime);
+        
+        // Show quantization and harmony controls and measure counter
+        uiManager.showQuantizationControls();
+        uiManager.showHarmonyControls();
+        uiManager.showMeasureCounter();
+        this.updateQuantizationUI();
+        this.updateHarmonyUI();
+        
+        // Show musical context for recording
+        const musicalContext = audioSystem.getMusicalContext();
+        uiManager.showMusicalContext(musicalContext);
+        
         // Start recording timer
         gameState.gameTimerId = setInterval(() => {
             gameState.updateTimer();
+            
+            // Update measure counter
+            const elapsedTime = performance.now() - gameState.gameStartTime;
+            const position = quantizationSystem.getMusicalPosition(elapsedTime);
+            uiManager.updateMeasureCounter(position.measure);
         }, 1000);
         
         this.runGameLoop();
@@ -178,7 +242,24 @@ class RhythmGame {
     }
     
     saveRecordedSong() {
-        const recordedSong = gameState.getRecordedSong();
+        let recordedSong = gameState.getRecordedSong();
+        
+        // Apply quantization and harmonic processing to recorded notes
+        if (recordingSystem.quantizationEnabled) {
+            const processedData = recordingSystem.processRecordedNotesWithHarmony(recordedSong.chart);
+            recordedSong.chart = processedData.notes;
+            recordedSong.quantized = true;
+            recordedSong.harmonicAnalysis = processedData.harmonicAnalysis;
+            recordedSong.musicalScore = processedData.musicalScore;
+            
+            // Show harmonic feedback
+            if (processedData.harmonicAnalysis.harmonicFit > 0.8) {
+                uiManager.showHarmonicFeedback("Excellent Harmony! ✨", '#10b981');
+            } else if (processedData.harmonicAnalysis.harmonicFit > 0.6) {
+                uiManager.showHarmonicFeedback("Good Musical Flow", '#3b82f6');
+            }
+        }
+        
         gameState.addCustomSong(recordedSong);
         storageManager.saveSongs(gameState.customSongs);
         uiManager.toggleButton('mySongsBtn', true);
@@ -253,11 +334,97 @@ class RhythmGame {
     setDuration(seconds) {
         gameState.setDuration(seconds);
     }
+    
+    // Quantization control methods
+    toggleQuantization() {
+        const enabled = recordingSystem.toggleQuantization();
+        this.updateQuantizationUI();
+        return enabled;
+    }
+    
+    setQuantizationType(type) {
+        recordingSystem.setQuantizationType(type);
+        this.updateQuantizationUI();
+    }
+    
+    toggleBeatGrid() {
+        const enabled = gameEngine.toggleBeatGrid();
+        this.updateQuantizationUI();
+        return enabled;
+    }
+    
+    toggleBeatSync() {
+        const enabled = gameEngine.toggleBeatSync();
+        this.updateQuantizationUI();
+        return enabled;
+    }
+    
+    toggleQuantizePreview() {
+        const enabled = recordingSystem.toggleQuantizationPreview();
+        this.updateQuantizationUI();
+        return enabled;
+    }
+    
+    // Harmony system control methods
+    toggleHarmonicSuggestions() {
+        const enabled = recordingSystem.toggleHarmonicSuggestions();
+        this.updateHarmonyUI();
+        return enabled;
+    }
+    
+    toggleAutoHarmonize() {
+        const enabled = recordingSystem.toggleAutoHarmonize();
+        harmonySystem.toggleAutoHarmonize();
+        this.updateHarmonyUI();
+        return enabled;
+    }
+    
+    // Update quantization UI with current settings
+    updateQuantizationUI() {
+        const settings = {
+            quantization: recordingSystem.getQuantizationSettings(),
+            beatGrid: gameEngine.getBeatGridSettings()
+        };
+        
+        uiManager.updateQuantizationControls(settings);
+    }
+    
+    // Update harmony UI with current settings
+    updateHarmonyUI() {
+        const settings = recordingSystem.getHarmonySettings();
+        uiManager.updateHarmonyControls(settings);
+        
+        // Update musical context display
+        const musicalContext = audioSystem.getMusicalContext();
+        if (musicalContext) {
+            uiManager.showMusicalContext(musicalContext);
+        }
+    }
 }
 
 // Create global game instance and initialize when page loads
 const game = new RhythmGame();
 window.game = game; // Make available globally for HTML onclick handlers
+
+// Setup keyboard shortcuts for quantization and harmony
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'q' && e.ctrlKey) {
+        e.preventDefault();
+        game.toggleQuantization();
+    } else if (e.key === 'g' && e.ctrlKey) {
+        e.preventDefault();
+        game.toggleBeatGrid();
+    } else if (e.key === 's' && e.ctrlKey && e.shiftKey) {
+        e.preventDefault();
+        game.toggleBeatSync();
+    } else if (e.key === 'h' && e.ctrlKey) {
+        e.preventDefault();
+        game.toggleHarmonicSuggestions();
+    } else if (e.key === 'm' && e.ctrlKey) {
+        e.preventDefault();
+        game.toggleAutoHarmonize();
+    }
+});
 
 window.addEventListener('load', async () => {
     await game.initialize();
