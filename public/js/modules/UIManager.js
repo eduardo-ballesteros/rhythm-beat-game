@@ -191,37 +191,277 @@ class UIManager {
     
     populateSongsList(songs, onSongSelect) {
         this.elements.mySongsList.innerHTML = '';
+        
+        // Add storage info header
+        if (typeof storageManager !== 'undefined') {
+            const storageInfo = storageManager.getStorageInfo();
+            const headerEl = document.createElement('div');
+            headerEl.className = 'mb-4 p-3 bg-gray-800 rounded border';
+            
+            const statusColor = storageInfo.isNearLimit ? 'text-yellow-400' : 'text-green-400';
+            headerEl.innerHTML = `
+                <div class="text-sm font-bold mb-2">Storage Status</div>
+                <div class="text-xs text-gray-300">
+                    <div>Songs: ${songs.length} (${storageInfo.songsStorageMB.toFixed(2)} MB)</div>
+                    <div>Total Used: <span class="${statusColor}">${storageInfo.usagePercent.toFixed(1)}%</span></div>
+                    <div>Available: ${storageInfo.availableSpaceMB.toFixed(2)} MB</div>
+                </div>
+                ${storageInfo.isNearLimit ? '<div class="text-yellow-400 text-xs mt-1">⚠️ Storage is getting full</div>' : ''}
+            `;
+            this.elements.mySongsList.appendChild(headerEl);
+        }
+        
         if (songs.length === 0) {
-            this.elements.mySongsList.innerHTML = '<p>No songs recorded yet!</p>';
+            const noSongsEl = document.createElement('p');
+            noSongsEl.textContent = 'No songs recorded yet!';
+            noSongsEl.className = 'text-gray-400 text-center py-4';
+            this.elements.mySongsList.appendChild(noSongsEl);
         } else {
-            songs.forEach((song) => {
+            songs.forEach((song, index) => {
+                const songContainer = document.createElement('div');
+                songContainer.className = 'flex items-center gap-2 mb-2';
+                
+                // Main song button
                 const songEl = document.createElement('button');
-                songEl.textContent = `${song.name} (Score: ${song.score})`;
-                songEl.className = 'block w-full text-left p-2 bg-gray-700 hover:bg-gray-600 rounded mb-2';
+                const notesCount = song.chart ? song.chart.length - 1 : 0; // -1 for END marker
+                const sizeInfo = this.getSongSizeInfo(song);
+                songEl.innerHTML = `
+                    <div class="text-left">
+                        <div>${song.name} (Score: ${song.score})</div>
+                        <div class="text-xs text-gray-400">${notesCount} notes • ${sizeInfo}</div>
+                    </div>
+                `;
+                songEl.className = 'flex-1 text-left p-2 bg-gray-700 hover:bg-gray-600 rounded';
                 songEl.onclick = () => {
                     this.hideModal('mySongsModal');
                     onSongSelect(song);
                 };
-                this.elements.mySongsList.appendChild(songEl);
+                
+                // Delete button
+                const deleteEl = document.createElement('button');
+                deleteEl.innerHTML = '×';
+                deleteEl.className = 'w-8 h-8 bg-red-600 hover:bg-red-500 text-white rounded flex items-center justify-center text-lg font-bold';
+                deleteEl.title = `Delete "${song.name}"`;
+                deleteEl.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Delete song "${song.name}"?\n\nThis will free up ${sizeInfo} of storage space.`)) {
+                        this.deleteSong(index, songs, onSongSelect);
+                    }
+                };
+                
+                songContainer.appendChild(songEl);
+                songContainer.appendChild(deleteEl);
+                this.elements.mySongsList.appendChild(songContainer);
             });
+            
+            // Add cleanup button if storage is getting full
+            if (typeof storageManager !== 'undefined') {
+                const storageInfo = storageManager.getStorageInfo();
+                if (storageInfo.isNearLimit && songs.length > 2) {
+                    const cleanupEl = document.createElement('button');
+                    cleanupEl.textContent = `Free up space (delete oldest songs)`;
+                    cleanupEl.className = 'w-full p-2 mt-4 bg-yellow-600 hover:bg-yellow-500 text-white rounded text-sm';
+                    cleanupEl.onclick = () => {
+                        this.showStorageCleanupDialog(songs, onSongSelect);
+                    };
+                    this.elements.mySongsList.appendChild(cleanupEl);
+                }
+            }
+        }
+    }
+    
+    getSongSizeInfo(song) {
+        try {
+            const songSize = new Blob([JSON.stringify(song)]).size;
+            if (songSize < 1024) {
+                return `${songSize} bytes`;
+            } else if (songSize < 1024 * 1024) {
+                return `${(songSize / 1024).toFixed(1)} KB`;
+            } else {
+                return `${(songSize / (1024 * 1024)).toFixed(2)} MB`;
+            }
+        } catch (error) {
+            return 'Size unknown';
+        }
+    }
+    
+    deleteSong(index, songs, onSongSelect) {
+        try {
+            // Remove from array
+            songs.splice(index, 1);
+            
+            // Save updated songs
+            if (typeof storageManager !== 'undefined') {
+                storageManager.saveSongs(songs);
+                
+                // Update game state
+                if (typeof gameState !== 'undefined') {
+                    gameState.setCustomSongs(songs);
+                }
+                
+                // Show success feedback
+                const storageInfo = storageManager.getStorageInfo();
+                this.showHarmonicFeedback(`Song deleted! Storage now ${storageInfo.usagePercent.toFixed(0)}% full`, '#10b981', 2000);
+            }
+            
+            // Refresh the list
+            this.populateSongsList(songs, onSongSelect);
+            
+            // Hide "My Songs" button if no songs left
+            if (songs.length === 0) {
+                this.toggleButton('mySongsBtn', false);
+            }
+            
+        } catch (error) {
+            console.error('Error deleting song:', error);
+            this.showHarmonicFeedback('Failed to delete song', '#ef4444', 2000);
+        }
+    }
+    
+    showStorageCleanupDialog(songs, onSongSelect) {
+        const oldestCount = Math.min(3, Math.floor(songs.length / 2));
+        if (confirm(`Delete the ${oldestCount} oldest songs to free up storage space?`)) {
+            try {
+                // Remove oldest songs
+                const removedSongs = songs.splice(0, oldestCount);
+                
+                if (typeof storageManager !== 'undefined') {
+                    storageManager.saveSongs(songs);
+                    
+                    if (typeof gameState !== 'undefined') {
+                        gameState.setCustomSongs(songs);
+                    }
+                    
+                    const storageInfo = storageManager.getStorageInfo();
+                    this.showHarmonicFeedback(
+                        `Deleted ${oldestCount} songs! Storage now ${storageInfo.usagePercent.toFixed(0)}% full`,
+                        '#10b981',
+                        3000
+                    );
+                }
+                
+                // Refresh the list
+                this.populateSongsList(songs, onSongSelect);
+                
+            } catch (error) {
+                console.error('Error during cleanup:', error);
+                this.showHarmonicFeedback('Cleanup failed', '#ef4444', 2000);
+            }
         }
     }
     
     populateDancersList(dancers, onDancerSelect) {
         this.elements.myDancersList.innerHTML = '';
+        
+        // Add storage info header for dancers
+        if (typeof storageManager !== 'undefined') {
+            const storageInfo = storageManager.getStorageInfo();
+            const headerEl = document.createElement('div');
+            headerEl.className = 'mb-4 p-3 bg-gray-800 rounded border';
+            
+            const statusColor = storageInfo.isNearLimit ? 'text-yellow-400' : 'text-green-400';
+            headerEl.innerHTML = `
+                <div class="text-sm font-bold mb-2">Storage Status</div>
+                <div class="text-xs text-gray-300">
+                    <div>Dancers: ${dancers.length} (${storageInfo.dancersStorageMB.toFixed(2)} MB)</div>
+                    <div>Total Used: <span class="${statusColor}">${storageInfo.usagePercent.toFixed(1)}%</span></div>
+                    <div>Available: ${storageInfo.availableSpaceMB.toFixed(2)} MB</div>
+                </div>
+                ${storageInfo.isNearLimit ? '<div class="text-yellow-400 text-xs mt-1">⚠️ Storage is getting full</div>' : ''}
+            `;
+            this.elements.myDancersList.appendChild(headerEl);
+        }
+        
         if (dancers.length === 0) {
-            this.elements.myDancersList.innerHTML = '<p>No dancers created yet!</p>';
+            const noDancersEl = document.createElement('p');
+            noDancersEl.textContent = 'No dancers created yet!';
+            noDancersEl.className = 'text-gray-400 text-center py-4';
+            this.elements.myDancersList.appendChild(noDancersEl);
         } else {
-            dancers.forEach((dancer) => {
+            dancers.forEach((dancer, index) => {
+                const dancerContainer = document.createElement('div');
+                dancerContainer.className = 'flex items-center gap-2 mb-2';
+                
+                // Main dancer button
                 const dancerEl = document.createElement('button');
-                dancerEl.textContent = dancer.name;
-                dancerEl.className = 'block w-full text-left p-2 bg-gray-700 hover:bg-gray-600 rounded mb-2';
+                const posesCount = dancer.poses ? dancer.poses.length : 0;
+                const sizeInfo = this.getDancerSizeInfo(dancer);
+                dancerEl.innerHTML = `
+                    <div class="text-left">
+                        <div>${dancer.name}</div>
+                        <div class="text-xs text-gray-400">${posesCount} poses • ${sizeInfo}</div>
+                    </div>
+                `;
+                dancerEl.className = 'flex-1 text-left p-2 bg-gray-700 hover:bg-gray-600 rounded';
                 dancerEl.onclick = () => {
                     this.hideModal('myDancersModal');
                     onDancerSelect(dancer);
                 };
-                this.elements.myDancersList.appendChild(dancerEl);
+                
+                // Delete button
+                const deleteEl = document.createElement('button');
+                deleteEl.innerHTML = '×';
+                deleteEl.className = 'w-8 h-8 bg-red-600 hover:bg-red-500 text-white rounded flex items-center justify-center text-lg font-bold';
+                deleteEl.title = `Delete "${dancer.name}"`;
+                deleteEl.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Delete dancer "${dancer.name}"?\n\nThis will free up ${sizeInfo} of storage space.`)) {
+                        this.deleteDancer(index, dancers, onDancerSelect);
+                    }
+                };
+                
+                dancerContainer.appendChild(dancerEl);
+                dancerContainer.appendChild(deleteEl);
+                this.elements.myDancersList.appendChild(dancerContainer);
             });
+        }
+    }
+    
+    getDancerSizeInfo(dancer) {
+        try {
+            const dancerSize = new Blob([JSON.stringify(dancer)]).size;
+            if (dancerSize < 1024) {
+                return `${dancerSize} bytes`;
+            } else if (dancerSize < 1024 * 1024) {
+                return `${(dancerSize / 1024).toFixed(1)} KB`;
+            } else {
+                return `${(dancerSize / (1024 * 1024)).toFixed(2)} MB`;
+            }
+        } catch (error) {
+            return 'Size unknown';
+        }
+    }
+    
+    deleteDancer(index, dancers, onDancerSelect) {
+        try {
+            // Remove from array
+            dancers.splice(index, 1);
+            
+            // Save updated dancers
+            if (typeof storageManager !== 'undefined') {
+                storageManager.saveDancers(dancers);
+                
+                // Update game state
+                if (typeof gameState !== 'undefined') {
+                    gameState.setCustomDancers(dancers);
+                }
+                
+                // Show success feedback
+                const storageInfo = storageManager.getStorageInfo();
+                this.showHarmonicFeedback(`Dancer deleted! Storage now ${storageInfo.usagePercent.toFixed(0)}% full`, '#10b981', 2000);
+            }
+            
+            // Refresh the list
+            this.populateDancersList(dancers, onDancerSelect);
+            
+            // Hide "My Dancers" button if no dancers left
+            if (dancers.length === 0) {
+                this.toggleButton('myDancersBtn', false);
+            }
+            
+        } catch (error) {
+            console.error('Error deleting dancer:', error);
+            this.showHarmonicFeedback('Failed to delete dancer', '#ef4444', 2000);
         }
     }
     

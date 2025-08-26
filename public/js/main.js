@@ -41,15 +41,46 @@ class RhythmGame {
     }
     
     loadFromStorage() {
-        const savedSongs = storageManager.loadSongs();
-        const savedDancers = storageManager.loadDancers();
-        
-        gameState.setCustomSongs(savedSongs);
-        gameState.setCustomDancers(savedDancers);
-        
-        // Show buttons if there are saved items
-        uiManager.toggleButton('mySongsBtn', savedSongs.length > 0);
-        uiManager.toggleButton('myDancersBtn', savedDancers.length > 0);
+        try {
+            console.log('Loading data from storage...');
+            
+            const savedSongs = storageManager.loadSongs();
+            const savedDancers = storageManager.loadDancers();
+            
+            console.log(`Loaded ${savedSongs.length} songs and ${savedDancers.length} dancers`);
+            
+            gameState.setCustomSongs(savedSongs);
+            gameState.setCustomDancers(savedDancers);
+            
+            // Show buttons if there are saved items
+            uiManager.toggleButton('mySongsBtn', gameState.customSongs.length > 0);
+            uiManager.toggleButton('myDancersBtn', gameState.customDancers.length > 0);
+            
+            // Show storage warning if needed
+            const storageInfo = storageManager.getStorageInfo();
+            if (storageInfo.isNearLimit) {
+                console.warn(`Storage usage is high: ${storageInfo.usagePercent.toFixed(1)}%`);
+                
+                // Show warning to user after a delay so it doesn't interfere with startup
+                setTimeout(() => {
+                    uiManager.showHarmonicFeedback(
+                        `Storage ${storageInfo.usagePercent.toFixed(0)}% full - consider deleting old items`, 
+                        '#f59e0b', 
+                        4000
+                    );
+                }, 3000);
+            }
+            
+        } catch (error) {
+            console.error('Error loading from storage:', error);
+            // Don't show error to user during startup, just log it
+            
+            // Initialize with empty arrays to prevent crashes
+            gameState.setCustomSongs([]);
+            gameState.setCustomDancers([]);
+            uiManager.toggleButton('mySongsBtn', false);
+            uiManager.toggleButton('myDancersBtn', false);
+        }
     }
     
     setupUICallbacks() {
@@ -246,27 +277,174 @@ class RhythmGame {
     }
     
     saveRecordedSong() {
-        let recordedSong = gameState.getRecordedSong();
-        
-        // Apply quantization and harmonic processing to recorded notes
-        if (recordingSystem.quantizationEnabled) {
-            const processedData = recordingSystem.processRecordedNotesWithHarmony(recordedSong.chart);
-            recordedSong.chart = processedData.notes;
-            recordedSong.quantized = true;
-            recordedSong.harmonicAnalysis = processedData.harmonicAnalysis;
-            recordedSong.musicalScore = processedData.musicalScore;
+        try {
+            console.log('Starting song save process...');
             
-            // Show harmonic feedback
-            if (processedData.harmonicAnalysis.harmonicFit > 0.8) {
-                uiManager.showHarmonicFeedback("Excellent Harmony! ✨", '#10b981');
-            } else if (processedData.harmonicAnalysis.harmonicFit > 0.6) {
-                uiManager.showHarmonicFeedback("Good Musical Flow", '#3b82f6');
+            // Get the recorded song data
+            let recordedSong;
+            try {
+                recordedSong = gameState.getRecordedSong();
+            } catch (error) {
+                console.error('Failed to get recorded song data:', error);
+                uiManager.showHarmonicFeedback('Error: Could not generate song data', '#ef4444', 3000);
+                return;
             }
+            
+            // Apply quantization and harmonic processing to recorded notes
+            if (recordingSystem.quantizationEnabled) {
+                try {
+                    const processedData = recordingSystem.processRecordedNotesWithHarmony(recordedSong.chart);
+                    recordedSong.chart = processedData.notes;
+                    recordedSong.quantized = true;
+                    recordedSong.harmonicAnalysis = processedData.harmonicAnalysis;
+                    recordedSong.musicalScore = processedData.musicalScore;
+                    
+                    // Show harmonic feedback
+                    if (processedData.harmonicAnalysis.harmonicFit > 0.8) {
+                        uiManager.showHarmonicFeedback("Excellent Harmony! ✨", '#10b981');
+                    } else if (processedData.harmonicAnalysis.harmonicFit > 0.6) {
+                        uiManager.showHarmonicFeedback("Good Musical Flow", '#3b82f6');
+                    }
+                } catch (error) {
+                    console.warn('Harmonic processing failed, saving song without processing:', error);
+                    uiManager.showHarmonicFeedback('Saved song without harmonic processing', '#f59e0b', 2000);
+                }
+            }
+            
+            // Add song to game state
+            try {
+                gameState.addCustomSong(recordedSong);
+            } catch (error) {
+                console.error('Failed to add song to game state:', error);
+                uiManager.showHarmonicFeedback('Error: Invalid song data', '#ef4444', 3000);
+                return;
+            }
+            
+            // Attempt to save to storage with comprehensive error handling
+            try {
+                storageManager.saveSongs(gameState.customSongs);
+                console.log('Song saved successfully!');
+                uiManager.toggleButton('mySongsBtn', true);
+                
+                // Show storage status
+                const storageInfo = storageManager.getStorageInfo();
+                if (storageInfo.isNearLimit) {
+                    uiManager.showHarmonicFeedback(
+                        `Song saved! Storage ${storageInfo.usagePercent.toFixed(0)}% full`, 
+                        '#f59e0b', 
+                        3000
+                    );
+                }
+                
+            } catch (error) {
+                console.error('Failed to save songs to storage:', error);
+                
+                // Handle specific storage errors
+                if (error.type === 'STORAGE_LIMIT_EXCEEDED') {
+                    this.handleStorageFullError(error, recordedSong);
+                } else if (error.type === 'QUOTA_EXCEEDED') {
+                    this.handleQuotaExceededError(recordedSong);
+                } else {
+                    // General storage error
+                    uiManager.showHarmonicFeedback(
+                        'Failed to save song: Storage error', 
+                        '#ef4444', 
+                        4000
+                    );
+                    
+                    // Offer retry option
+                    setTimeout(() => {
+                        if (confirm('Song save failed. Would you like to try again?')) {
+                            this.saveRecordedSong();
+                        } else {
+                            // Remove song from memory since it couldn't be saved
+                            gameState.customSongs.pop();
+                        }
+                    }, 4000);
+                }
+            }
+        } catch (error) {
+            console.error('Unexpected error during song save:', error);
+            uiManager.showHarmonicFeedback('Unexpected error saving song', '#ef4444', 3000);
         }
+    }
+    
+    handleStorageFullError(error, recordedSong) {
+        console.log('Storage limit exceeded, attempting automatic cleanup...');
         
-        gameState.addCustomSong(recordedSong);
-        storageManager.saveSongs(gameState.customSongs);
-        uiManager.toggleButton('mySongsBtn', true);
+        const storageInfo = storageManager.getStorageInfo();
+        const message = `Storage full (${storageInfo.usagePercent.toFixed(0)}%). Need ${error.requiredSpace.toFixed(1)}MB space.`;
+        
+        uiManager.showHarmonicFeedback(message, '#f59e0b', 5000);
+        
+        // Try to automatically free up space
+        setTimeout(() => {
+            if (confirm(`${message} Delete oldest songs to make space?`)) {
+                const spaceNeeded = error.requiredSpace;
+                if (storageManager.freeUpSpace(spaceNeeded)) {
+                    uiManager.showHarmonicFeedback('Freed up space, saving song...', '#3b82f6', 2000);
+                    
+                    // Reload songs after cleanup
+                    const savedSongs = storageManager.loadSongs();
+                    gameState.setCustomSongs(savedSongs);
+                    
+                    // Try saving again
+                    setTimeout(() => {
+                        try {
+                            storageManager.saveSongs(gameState.customSongs);
+                            uiManager.showHarmonicFeedback('Song saved after cleanup!', '#10b981', 3000);
+                            uiManager.toggleButton('mySongsBtn', true);
+                        } catch (retryError) {
+                            console.error('Failed to save even after cleanup:', retryError);
+                            uiManager.showHarmonicFeedback('Save failed even after cleanup', '#ef4444', 3000);
+                            gameState.customSongs.pop(); // Remove from memory
+                        }
+                    }, 2000);
+                } else {
+                    uiManager.showHarmonicFeedback('Could not free enough space', '#ef4444', 3000);
+                    gameState.customSongs.pop(); // Remove from memory
+                }
+            } else {
+                gameState.customSongs.pop(); // Remove from memory
+            }
+        }, 5000);
+    }
+    
+    handleQuotaExceededError(recordedSong) {
+        console.log('Browser storage quota exceeded');
+        
+        uiManager.showHarmonicFeedback(
+            'Browser storage limit reached. Clear browser data or try again.', 
+            '#ef4444', 
+            5000
+        );
+        
+        setTimeout(() => {
+            if (confirm('Browser storage is full. Clear all game data to make space? (This will delete all songs and dancers)')) {
+                if (storageManager.clearAllData()) {
+                    // Reset game state
+                    gameState.setCustomSongs([]);
+                    gameState.setCustomDancers([]);
+                    uiManager.toggleButton('mySongsBtn', false);
+                    uiManager.toggleButton('myDancersBtn', false);
+                    
+                    // Try saving the current song again
+                    gameState.customSongs = [recordedSong];
+                    try {
+                        storageManager.saveSongs(gameState.customSongs);
+                        uiManager.showHarmonicFeedback('Data cleared, song saved!', '#10b981', 3000);
+                        uiManager.toggleButton('mySongsBtn', true);
+                    } catch (error) {
+                        console.error('Failed to save even after clearing all data:', error);
+                        uiManager.showHarmonicFeedback('Failed to save even after data clear', '#ef4444', 3000);
+                    }
+                } else {
+                    uiManager.showHarmonicFeedback('Failed to clear data', '#ef4444', 3000);
+                }
+            } else {
+                gameState.customSongs.pop(); // Remove from memory
+            }
+        }, 5000);
     }
     
     showMySongs() {

@@ -168,32 +168,179 @@ class GameState {
     }
     
     addCustomSong(song) {
+        // Validate song data
+        if (!song || typeof song !== 'object') {
+            console.error('addCustomSong: Invalid song data', song);
+            throw new Error('Invalid song data provided');
+        }
+        
+        if (!song.name || typeof song.name !== 'string') {
+            console.error('addCustomSong: Song missing valid name', song);
+            throw new Error('Song must have a valid name');
+        }
+        
+        if (!song.chart || !Array.isArray(song.chart)) {
+            console.error('addCustomSong: Song missing valid chart', song);
+            throw new Error('Song must have a valid chart array');
+        }
+        
+        if (typeof song.score !== 'number' || song.score <= 0) {
+            console.warn('addCustomSong: Invalid song score, defaulting to 350', song.score);
+            song.score = 350;
+        }
+        
+        console.log(`Adding custom song: "${song.name}" with ${song.chart.length} notes (score: ${song.score})`);
+        
+        // Check for duplicate names and add suffix if needed
+        const existingNames = this.customSongs.map(s => s.name);
+        let finalName = song.name;
+        let counter = 1;
+        
+        while (existingNames.includes(finalName)) {
+            finalName = `${song.name} (${counter})`;
+            counter++;
+        }
+        
+        if (finalName !== song.name) {
+            console.log(`Renamed song from "${song.name}" to "${finalName}" to avoid duplicate`);
+            song.name = finalName;
+        }
+        
         this.customSongs.push(song);
+        console.log(`Successfully added song. Total custom songs: ${this.customSongs.length}`);
     }
     
     addCustomDancer(dancer) {
+        // Validate dancer data
+        if (!dancer || typeof dancer !== 'object') {
+            console.error('addCustomDancer: Invalid dancer data', dancer);
+            throw new Error('Invalid dancer data provided');
+        }
+        
+        if (!dancer.name || typeof dancer.name !== 'string') {
+            console.error('addCustomDancer: Dancer missing valid name', dancer);
+            throw new Error('Dancer must have a valid name');
+        }
+        
+        if (!dancer.poses || !Array.isArray(dancer.poses)) {
+            console.error('addCustomDancer: Dancer missing valid poses', dancer);
+            throw new Error('Dancer must have a valid poses array');
+        }
+        
+        console.log(`Adding custom dancer: "${dancer.name}" with ${dancer.poses.length} poses`);
+        
+        // Check for duplicate names and add suffix if needed
+        const existingNames = this.customDancers.map(d => d.name);
+        let finalName = dancer.name;
+        let counter = 1;
+        
+        while (existingNames.includes(finalName)) {
+            finalName = `${dancer.name} (${counter})`;
+            counter++;
+        }
+        
+        if (finalName !== dancer.name) {
+            console.log(`Renamed dancer from "${dancer.name}" to "${finalName}" to avoid duplicate`);
+            dancer.name = finalName;
+        }
+        
         this.customDancers.push(dancer);
+        console.log(`Successfully added dancer. Total custom dancers: ${this.customDancers.length}`);
     }
     
     setCustomSongs(songs) {
-        this.customSongs = songs;
+        if (!Array.isArray(songs)) {
+            console.error('setCustomSongs: Invalid songs array', songs);
+            this.customSongs = [];
+            return;
+        }
+        
+        console.log(`Loading ${songs.length} custom songs from storage`);
+        
+        // Validate each song
+        const validSongs = [];
+        songs.forEach((song, index) => {
+            try {
+                if (song && typeof song === 'object' && 
+                    song.name && typeof song.name === 'string' &&
+                    song.chart && Array.isArray(song.chart) &&
+                    typeof song.score === 'number') {
+                    validSongs.push(song);
+                } else {
+                    console.warn(`Skipping invalid song at index ${index}:`, song);
+                }
+            } catch (error) {
+                console.warn(`Error validating song at index ${index}:`, error);
+            }
+        });
+        
+        this.customSongs = validSongs;
+        console.log(`Successfully loaded ${validSongs.length} valid custom songs`);
+        
+        if (validSongs.length !== songs.length) {
+            console.warn(`Filtered out ${songs.length - validSongs.length} invalid songs`);
+        }
     }
     
     setCustomDancers(dancers) {
-        this.customDancers = dancers;
+        if (!Array.isArray(dancers)) {
+            console.error('setCustomDancers: Invalid dancers array', dancers);
+            this.customDancers = [];
+            return;
+        }
+        
+        console.log(`Loading ${dancers.length} custom dancers from storage`);
+        
+        // Validate each dancer
+        const validDancers = [];
+        dancers.forEach((dancer, index) => {
+            try {
+                if (dancer && typeof dancer === 'object' && 
+                    dancer.name && typeof dancer.name === 'string' &&
+                    dancer.poses && Array.isArray(dancer.poses)) {
+                    validDancers.push(dancer);
+                } else {
+                    console.warn(`Skipping invalid dancer at index ${index}:`, dancer);
+                }
+            } catch (error) {
+                console.warn(`Error validating dancer at index ${index}:`, error);
+            }
+        });
+        
+        this.customDancers = validDancers;
+        console.log(`Successfully loaded ${validDancers.length} valid custom dancers`);
+        
+        if (validDancers.length !== dancers.length) {
+            console.warn(`Filtered out ${dancers.length - validDancers.length} invalid dancers`);
+        }
     }
     
     getRecordedSong() {
+        if (!this.currentRecordingName) {
+            console.error('getRecordedSong: No recording name set');
+            throw new Error('Recording name is required');
+        }
+        
+        if (this.recordedNotes.length === 0) {
+            console.warn('getRecordedSong: No notes recorded');
+        }
+        
         const lastNoteTime = this.recordedNotes.length > 0 ? 
             this.recordedNotes[this.recordedNotes.length - 1].time : 0;
         const chart = [...this.recordedNotes];
         chart.push({ time: lastNoteTime + 2000, key: 'END' });
         
-        return {
+        const song = {
             name: this.currentRecordingName,
             score: this.currentBaseScore,
-            chart: chart
+            chart: chart,
+            recordedAt: Date.now(),
+            duration: this.recordingTime
         };
+        
+        console.log(`Generated recorded song: "${song.name}" with ${this.recordedNotes.length} notes`);
+        
+        return song;
     }
 }
 

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storage Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #444; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #333; color: white; border: 1px solid #666; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #555; }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .warning { color: #fbbf24; }
+        .info { color: #60a5fa; }
+        pre { background: #2a2a2a; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .log { font-family: monospace; font-size: 12px; background: #111; padding: 10px; border-radius: 3px; height: 200px; overflow-y: auto; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Storage Debug Test</h1>
+        <div id="log" class="log"></div>
+        
+        <div class="test-section">
+            <h2>Storage Information</h2>
+            <button onclick="showStorageInfo()">Show Storage Info</button>
+            <button onclick="clearAllStorage()">Clear All Storage</button>
+            <div id="storage-info"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Song Storage Tests</h2>
+            <button onclick="createTestSong()">Create Test Song</button>
+            <button onclick="createLargeSong()">Create Large Song</button>
+            <button onclick="createManySmallSongs()">Create Many Small Songs</button>
+            <button onclick="testStorageLimits()">Test Storage Limits</button>
+            <div id="song-test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Error Handling Tests</h2>
+            <button onclick="testQuotaExceeded()">Test Quota Exceeded</button>
+            <button onclick="testInvalidSongData()">Test Invalid Song Data</button>
+            <button onclick="testAutoCleanup()">Test Auto Cleanup</button>
+            <div id="error-test-results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import storageManager from './js/modules/StorageManager.js';
+        import gameState from './js/modules/GameState.js';
+        
+        // Make available globally for testing
+        window.storageManager = storageManager;
+        window.gameState = gameState;
+        
+        window.log = function(message, type = 'info') {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'error' ? 'error' : type === 'success' ? 'success' : 
+                              type === 'warning' ? 'warning' : 'info';
+            logEl.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(message);
+        };
+        
+        window.showStorageInfo = function() {
+            try {
+                const info = storageManager.getStorageInfo();
+                const display = document.getElementById('storage-info');
+                display.innerHTML = `
+                    <pre>${JSON.stringify(info, null, 2)}</pre>
+                `;
+                log('Storage info retrieved successfully', 'success');
+            } catch (error) {
+                log(`Error getting storage info: ${error.message}`, 'error');
+            }
+        };
+        
+        window.clearAllStorage = function() {
+            if (confirm('Clear all storage?')) {
+                try {
+                    storageManager.clearAllData();
+                    gameState.setCustomSongs([]);
+                    gameState.setCustomDancers([]);
+                    log('All storage cleared', 'success');
+                    showStorageInfo();
+                } catch (error) {
+                    log(`Error clearing storage: ${error.message}`, 'error');
+                }
+            }
+        };
+        
+        window.createTestSong = function() {
+            try {
+                const testSong = {
+                    name: `Test Song ${Date.now()}`,
+                    score: 350,
+                    chart: [
+                        { time: 1000, key: 'ArrowUp' },
+                        { time: 2000, key: 'ArrowDown' },
+                        { time: 3000, key: 'ArrowLeft' },
+                        { time: 4000, key: 'ArrowRight' },
+                        { time: 5000, key: 'END' }
+                    ],
+                    recordedAt: Date.now(),
+                    duration: 5
+                };
+                
+                gameState.addCustomSong(testSong);
+                storageManager.saveSongs(gameState.customSongs);
+                log(`Created test song: ${testSong.name}`, 'success');
+                showStorageInfo();
+            } catch (error) {
+                log(`Error creating test song: ${error.message}`, 'error');
+            }
+        };
+        
+        window.createLargeSong = function() {
+            try {
+                const chart = [];
+                // Create a song with many notes and harmonic analysis data
+                for (let i = 0; i < 1000; i++) {
+                    chart.push({
+                        time: i * 100,
+                        key: ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'][i % 4],
+                        harmonicAnalysis: {
+                            fundamental: 440 + (i * 10),
+                            harmonics: Array.from({length: 10}, (_, j) => Math.random() * 100),
+                            spectralData: Array.from({length: 50}, () => Math.random()),
+                            phase: Math.random() * 2 * Math.PI,
+                            amplitude: Math.random()
+                        },
+                        suggestedNote: 'C4',
+                        actualNote: 'A4'
+                    });
+                }
+                chart.push({ time: 100000, key: 'END' });
+                
+                const largeSong = {
+                    name: `Large Song ${Date.now()}`,
+                    score: 500,
+                    chart: chart,
+                    quantized: true,
+                    harmonicAnalysis: {
+                        harmonicFit: 0.85,
+                        keySignature: 'C major',
+                        chordProgression: ['C', 'Am', 'F', 'G']
+                    },
+                    musicalScore: {
+                        tempo: 120,
+                        timeSignature: '4/4',
+                        complexity: 0.75
+                    },
+                    recordedAt: Date.now(),
+                    duration: 100
+                };
+                
+                log(`Creating large song with ${chart.length} notes...`, 'info');
+                gameState.addCustomSong(largeSong);
+                storageManager.saveSongs(gameState.customSongs);
+                log(`Created large song: ${largeSong.name}`, 'success');
+                showStorageInfo();
+            } catch (error) {
+                log(`Error creating large song: ${error.message}`, 'error');
+            }
+        };
+        
+        window.createManySmallSongs = function() {
+            try {
+                log('Creating many small songs to test limits...', 'info');
+                let successCount = 0;
+                let failCount = 0;
+                
+                for (let i = 0; i < 50; i++) {
+                    try {
+                        const smallSong = {
+                            name: `Small Song ${i + 1}`,
+                            score: 200 + (i * 10),
+                            chart: [
+                                { time: 1000, key: 'ArrowUp' },
+                                { time: 2000, key: 'END' }
+                            ],
+                            recordedAt: Date.now(),
+                            duration: 2
+                        };
+                        
+                        gameState.addCustomSong(smallSong);
+                        storageManager.saveSongs(gameState.customSongs);
+                        successCount++;
+                        
+                        // Check if we're approaching limits
+                        const info = storageManager.getStorageInfo();
+                        if (info.usagePercent > 70) {
+                            log(`Storage usage at ${info.usagePercent.toFixed(1)}% - stopping`, 'warning');
+                            break;
+                        }
+                    } catch (error) {
+                        failCount++;
+                        log(`Failed to create song ${i + 1}: ${error.message}`, 'error');
+                        break;
+                    }
+                }
+                
+                log(`Created ${successCount} songs, ${failCount} failures`, successCount > 0 ? 'success' : 'error');
+                showStorageInfo();
+            } catch (error) {
+                log(`Error in createManySmallSongs: ${error.message}`, 'error');
+            }
+        };
+        
+        window.testStorageLimits = function() {
+            try {
+                const info = storageManager.getStorageInfo();
+                log(`Testing storage limits - current usage: ${info.usagePercent.toFixed(1)}%`, 'info');
+                
+                // Try to create a song that would exceed limits
+                const hugeChart = Array.from({length: 10000}, (_, i) => ({
+                    time: i * 10,
+                    key: 'ArrowUp',
+                    harmonicAnalysis: {
+                        spectralData: Array.from({length: 1000}, () => Math.random())
+                    }
+                }));
+                
+                const hugeSong = {
+                    name: `Huge Song ${Date.now()}`,
+                    score: 1000,
+                    chart: hugeChart,
+                    recordedAt: Date.now(),
+                    duration: 100
+                };
+                
+                gameState.addCustomSong(hugeSong);
+                storageManager.saveSongs(gameState.customSongs);
+                log('Huge song created successfully', 'success');
+                showStorageInfo();
+            } catch (error) {
+                log(`Storage limit test result: ${error.message}`, 'warning');
+                log(`Error type: ${error.type}`, 'info');
+                if (error.requiredSpace) {
+                    log(`Required space: ${error.requiredSpace.toFixed(2)} MB`, 'info');
+                }
+                if (error.availableSpace) {
+                    log(`Available space: ${error.availableSpace.toFixed(2)} MB`, 'info');
+                }
+            }
+        };
+        
+        window.testQuotaExceeded = function() {
+            log('Testing quota exceeded scenario...', 'info');
+            // This is mainly for demonstration - real quota errors are hard to simulate
+            try {
+                // Try to fill storage gradually until we hit limits
+                let attempts = 0;
+                while (attempts < 100) {
+                    const testData = Array.from({length: 1000}, () => Math.random().toString());
+                    const testSong = {
+                        name: `Quota Test ${attempts}`,
+                        score: 100,
+                        chart: testData.map((val, i) => ({ time: i, key: 'ArrowUp', data: val })),
+                        recordedAt: Date.now()
+                    };
+                    
+                    gameState.addCustomSong(testSong);
+                    storageManager.saveSongs(gameState.customSongs);
+                    attempts++;
+                    
+                    const info = storageManager.getStorageInfo();
+                    if (info.usagePercent > 90) {
+                        log(`Reached ${info.usagePercent.toFixed(1)}% usage, stopping test`, 'warning');
+                        break;
+                    }
+                }
+                log('Quota test completed without hitting limits', 'info');
+            } catch (error) {
+                log(`Quota test caught error: ${error.message}`, 'warning');
+                log(`Error type: ${error.type || 'unknown'}`, 'info');
+            }
+        };
+        
+        window.testInvalidSongData = function() {
+            log('Testing invalid song data handling...', 'info');
+            
+            const invalidTests = [
+                { name: 'null song', data: null },
+                { name: 'undefined song', data: undefined },
+                { name: 'empty object', data: {} },
+                { name: 'no name', data: { score: 100, chart: [] } },
+                { name: 'no chart', data: { name: 'Test', score: 100 } },
+                { name: 'invalid chart', data: { name: 'Test', score: 100, chart: 'not an array' } },
+                { name: 'invalid score', data: { name: 'Test', score: 'invalid', chart: [] } }
+            ];
+            
+            let passCount = 0;
+            invalidTests.forEach(test => {
+                try {
+                    gameState.addCustomSong(test.data);
+                    log(`❌ ${test.name}: Should have failed but didn't`, 'error');
+                } catch (error) {
+                    log(`✅ ${test.name}: Correctly rejected - ${error.message}`, 'success');
+                    passCount++;
+                }
+            });
+            
+            log(`Invalid data test completed: ${passCount}/${invalidTests.length} passed`, 
+                passCount === invalidTests.length ? 'success' : 'warning');
+        };
+        
+        window.testAutoCleanup = function() {
+            try {
+                log('Testing automatic cleanup functionality...', 'info');
+                
+                // First, create several songs
+                for (let i = 0; i < 5; i++) {
+                    const song = {
+                        name: `Cleanup Test Song ${i}`,
+                        score: 200,
+                        chart: [{ time: 1000, key: 'ArrowUp' }, { time: 2000, key: 'END' }],
+                        recordedAt: Date.now() - (i * 60000) // Make them have different ages
+                    };
+                    gameState.addCustomSong(song);
+                }
+                
+                storageManager.saveSongs(gameState.customSongs);
+                log(`Created ${gameState.customSongs.length} songs for cleanup test`, 'info');
+                
+                // Test removing oldest songs
+                const initialCount = gameState.customSongs.length;
+                const result = storageManager.removeOldestSongs(2);
+                
+                if (result) {
+                    const songs = storageManager.loadSongs();
+                    gameState.setCustomSongs(songs);
+                    log(`Cleanup successful: ${initialCount} -> ${songs.length} songs`, 'success');
+                } else {
+                    log('Cleanup failed or no songs to remove', 'warning');
+                }
+                
+                showStorageInfo();
+            } catch (error) {
+                log(`Auto cleanup test error: ${error.message}`, 'error');
+            }
+        };
+        
+        // Initialize
+        log('Storage debug test loaded', 'success');
+        showStorageInfo();
+    </script>
+</body>
+</html>
