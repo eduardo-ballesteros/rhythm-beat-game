@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythm Beat Game (AI Dancer)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Bangers', cursive;
+            overflow: hidden;
+            background-color: #1a1a2e;
+        }
+        #play-area {
+            transition: background-color 0.5s ease-in-out;
+        }
+        .arrow {
+            width: 80px;
+            height: 80px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .arrow-receptor.hit {
+            animation: hit-pulse 0.2s ease-out;
+        }
+        .arrow.moving {
+            position: absolute;
+        }
+        @keyframes hit-pulse {
+            0% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.7; }
+        }
+        .arrow-left { background-image: url('https://placehold.co/80x80/a855f7/ffffff?text=%E2%86%90'); }
+        .arrow-down { background-image: url('https://placehold.co/80x80/22c55e/ffffff?text=%E2%86%93'); }
+        .arrow-up { background-image: url('https://placehold.co/80x80/ef4444/ffffff?text=%E2%86%91'); }
+        .arrow-right { background-image: url('https://placehold.co/80x80/3b82f6/ffffff?text=%E2%86%92'); }
+        
+        #dancer-img {
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .hit-feedback {
+            position: absolute;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            z-index: 20;
+            pointer-events: none;
+            animation: feedback-scroll-up 0.5s ease-out forwards;
+        }
+
+        @keyframes feedback-scroll-up {
+            from {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
+            to {
+                transform: translate(-50%, -50px);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes scroll-up-fade-out {
+            from {
+                transform: translateY(0);
+                opacity: 0.8;
+            }
+            to {
+                transform: translateY(-80vh);
+                opacity: 0;
+            }
+        }
+        .recording-arrow {
+            position: absolute;
+            bottom: 20px;
+            animation: scroll-up-fade-out 2s linear forwards;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+
+    <!-- Game Container -->
+    <div id="game-container" class="relative w-full max-w-2xl h-full flex flex-col items-center justify-center p-4">
+
+        <!-- UI: Score and Timer -->
+        <div id="game-ui" class="w-full flex justify-between items-center mb-4 z-10 text-4xl hidden">
+            <div>Score: <span id="score">0</span></div>
+            <div id="game-timer-display">Time: <span id="timer">0:30</span></div>
+        </div>
+        <div id="record-ui" class="w-full flex justify-between items-center mb-4 z-10 text-4xl hidden">
+            <div>Notes: <span id="record-count">0</span></div>
+            <div>Time: <span id="record-timer">0:00</span></div>
+        </div>
+
+        <!-- Play Area -->
+        <div id="play-area" class="relative w-full h-[80vh] bg-black bg-opacity-50 rounded-2xl border-4 border-gray-700 overflow-hidden flex items-center justify-center">
+            <!-- Dancer Image -->
+            <img id="dancer-img" src="" alt="AI Dancer" class="absolute bottom-0 h-3/4 z-0 opacity-50 hidden" />
+            
+            <!-- Arrow Receptors (Hit Zone) -->
+            <div id="receptor-container" class="absolute top-4 w-full flex justify-center gap-4 z-10">
+                <div class="arrow arrow-receptor arrow-left opacity-70" data-key="ArrowLeft"></div>
+                <div class="arrow arrow-receptor arrow-down opacity-70" data-key="ArrowDown"></div>
+                <div class="arrow arrow-receptor arrow-up opacity-70" data-key="ArrowUp"></div>
+                <div class="arrow arrow-receptor arrow-right opacity-70" data-key="ArrowRight"></div>
+            </div>
+        </div>
+        
+        <button id="stop-recording-btn" class="absolute bottom-8 px-8 py-4 bg-red-600 hover:bg-red-700 rounded-lg text-3xl transition-all hidden z-20">Stop Recording</button>
+
+        <!-- Start/Game Over Screen -->
+        <div id="message-screen" class="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-20 text-center">
+            <h1 id="message-title" class="text-8xl text-yellow-400 drop-shadow-lg">Rhythm Beat</h1>
+            <p id="message-text" class="text-4xl mt-4">Press Enter to Start</p>
+            
+            <div id="duration-selector" class="flex gap-4 my-4">
+                <button id="duration-30s" class="px-6 py-2 bg-gray-700 border-2 border-yellow-400 rounded-lg text-2xl">30 Sec</button>
+                <button id="duration-120s" class="px-6 py-2 bg-gray-700 border-2 border-transparent rounded-lg text-2xl">2 Min</button>
+            </div>
+
+            <div id="main-menu-buttons" class="flex flex-wrap justify-center gap-4 mt-8">
+                 <button id="create-dancer-btn" class="px-6 py-3 bg-teal-600 hover:bg-teal-700 rounded-lg text-2xl transition-all">Create Dancer</button>
+                 <button id="my-dancers-btn" class="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-2xl transition-all hidden">My Dancers</button>
+                 <button id="record-song-btn" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-2xl transition-all">Record a Song</button>
+                 <button id="my-songs-btn" class="px-6 py-3 bg-pink-600 hover:bg-pink-700 rounded-lg text-2xl transition-all hidden">My Songs</button>
+            </div>
+            <p id="final-score" class="text-5xl mt-8 hidden"></p>
+        </div>
+
+        <!-- Modals -->
+        <div id="camera-modal" class="absolute inset-0 bg-black bg-opacity-90 flex-col items-center justify-center z-30 text-center p-4 hidden">
+            <h2 class="text-5xl mb-4">Create Your Dancer</h2>
+            <video id="video-feed" class="w-full max-w-lg rounded-lg border-4 border-teal-500" autoplay playsinline></video>
+            <canvas id="photo-canvas" class="hidden"></canvas>
+            <p id="camera-loading" class="text-3xl mt-4 hidden">AI is creating your character...</p>
+            <div id="camera-buttons" class="flex gap-4 mt-4">
+                <button id="take-photo-btn" class="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-2xl transition-all">Take Photo</button>
+                <button id="close-camera-btn" class="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-2xl transition-all">Cancel</button>
+            </div>
+        </div>
+        <div id="my-songs-modal" class="absolute inset-0 bg-black bg-opacity-90 flex-col items-center justify-center z-30 text-center p-4 hidden">
+            <h2 class="text-5xl mb-4">My Songs</h2>
+            <div id="my-songs-list" class="w-full max-w-md bg-gray-800 p-4 rounded-lg max-h-96 overflow-y-auto"></div>
+            <button id="close-songs-btn" class="mt-4 px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg text-2xl transition-all">Close</button>
+        </div>
+        <div id="my-dancers-modal" class="absolute inset-0 bg-black bg-opacity-90 flex-col items-center justify-center z-30 text-center p-4 hidden">
+            <h2 class="text-5xl mb-4">My Dancers</h2>
+            <div id="my-dancers-list" class="w-full max-w-md bg-gray-800 p-4 rounded-lg max-h-96 overflow-y-auto"></div>
+            <button id="close-dancers-btn" class="mt-4 px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg text-2xl transition-all">Close</button>
+        </div>
+        <div id="name-prompt-modal" class="absolute inset-0 bg-black bg-opacity-90 flex-col items-center justify-center z-40 text-center p-4 hidden">
+            <h2 id="name-prompt-title" class="text-5xl mb-4">Enter a Name</h2>
+            <input id="name-prompt-input" type="text" class="text-black text-2xl p-2 rounded-lg w-full max-w-md" placeholder="Enter name here...">
+            <div id="score-selector" class="my-4 hidden">
+                <h3 class="text-3xl mb-2">Select Base Score</h3>
+                <div class="flex gap-2 justify-center">
+                    <button class="score-option px-4 py-2 bg-gray-700 border-2 border-yellow-400 rounded-lg text-xl" data-score="350">350</button>
+                    <button class="score-option px-4 py-2 bg-gray-700 border-2 border-transparent rounded-lg text-xl" data-score="450">450</button>
+                    <button class="score-option px-4 py-2 bg-gray-700 border-2 border-transparent rounded-lg text-xl" data-score="500">500</button>
+                    <button class="score-option px-4 py-2 bg-gray-700 border-2 border-transparent rounded-lg text-xl" data-score="750">750</button>
+                </div>
+            </div>
+            <div class="flex gap-4 mt-4">
+                <button id="name-prompt-save" class="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-2xl transition-all">Save</button>
+                <button id="name-prompt-cancel" class="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-2xl transition-all">Cancel</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
