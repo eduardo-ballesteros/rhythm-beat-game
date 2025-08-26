@@ -226,7 +226,11 @@ class RhythmGame {
         
         // Start recording timer
         gameState.gameTimerId = setInterval(() => {
-            gameState.updateTimer();
+            const shouldEnd = gameState.updateTimer();
+            if (shouldEnd) {
+                this.endGame();
+                return;
+            }
             
             // Update measure counter
             const elapsedTime = performance.now() - gameState.gameStartTime;

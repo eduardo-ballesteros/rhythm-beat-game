@@ -113,6 +113,10 @@ class GameState {
     updateTimer() {
         if (this.isRecording) {
             this.recordingTime++;
+            // Check if recording duration limit is reached
+            if (this.recordingTime >= this.GAME_DURATION) {
+                return true; // Signal to end recording
+            }
         } else {
             this.timeLeft--;
         }
@@ -123,8 +127,10 @@ class GameState {
     updateUI() {
         let minutes, seconds, timeString;
         if (this.isRecording) {
-            minutes = Math.floor(this.recordingTime / 60);
-            seconds = this.recordingTime % 60;
+            // Show remaining recording time instead of elapsed time
+            const remainingTime = this.GAME_DURATION - this.recordingTime;
+            minutes = Math.floor(remainingTime / 60);
+            seconds = remainingTime % 60;
             timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
             if (this.recordTimerDisplay) this.recordTimerDisplay.textContent = timeString;
             if (this.recordCountDisplay) this.recordCountDisplay.textContent = this.recordedNotes.length;
@@ -142,8 +148,17 @@ class GameState {
         this.updateUI();
     }
     
-    addRecordedNote(time, key) {
-        this.recordedNotes.push({ time: Math.round(time), key });
+    addRecordedNote(time, key, harmonicData = null) {
+        const note = { time: Math.round(time), key };
+        
+        // Add harmonic analysis data if provided
+        if (harmonicData) {
+            note.harmonicAnalysis = harmonicData.harmonicAnalysis;
+            note.suggestedNote = harmonicData.suggestedNote;
+            note.actualNote = harmonicData.actualNote;
+        }
+        
+        this.recordedNotes.push(note);
         this.updateUI();
     }
     
