@@ -134,6 +134,12 @@ class UIManager {
         this.elements.recordUi.classList.remove('hidden');
         this.elements.gameUi.classList.add('hidden');
         this.elements.stopRecordingBtn.classList.remove('hidden');
+        
+        // Hide duration selector during recording
+        const durationSelector = document.getElementById('duration-selector');
+        if (durationSelector) {
+            durationSelector.classList.add('hidden');
+        }
     }
     
     showMainMenu(title = "Rhythm Beat", text = "Press Enter to Start") {
@@ -144,6 +150,12 @@ class UIManager {
         this.elements.messageTitle.textContent = title;
         this.elements.messageText.textContent = text;
         this.elements.finalScore.classList.add('hidden');
+        
+        // Show duration selector again when returning to main menu
+        const durationSelector = document.getElementById('duration-selector');
+        if (durationSelector) {
+            durationSelector.classList.remove('hidden');
+        }
     }
     
     showGameOverScreen(score) {

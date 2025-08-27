@@ -113,10 +113,8 @@ class GameState {
     updateTimer() {
         if (this.isRecording) {
             this.recordingTime++;
-            // Check if recording duration limit is reached
-            if (this.recordingTime >= this.GAME_DURATION) {
-                return true; // Signal to end recording
-            }
+            // Recording continues indefinitely until user stops it
+            // No duration limit check for recording mode
         } else {
             this.timeLeft--;
         }
@@ -127,10 +125,9 @@ class GameState {
     updateUI() {
         let minutes, seconds, timeString;
         if (this.isRecording) {
-            // Show remaining recording time instead of elapsed time
-            const remainingTime = this.GAME_DURATION - this.recordingTime;
-            minutes = Math.floor(remainingTime / 60);
-            seconds = remainingTime % 60;
+            // Show elapsed recording time counting up from 00:00
+            minutes = Math.floor(this.recordingTime / 60);
+            seconds = this.recordingTime % 60;
             timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
             if (this.recordTimerDisplay) this.recordTimerDisplay.textContent = timeString;
             if (this.recordCountDisplay) this.recordCountDisplay.textContent = this.recordedNotes.length;

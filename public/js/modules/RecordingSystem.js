@@ -249,11 +249,10 @@ class RecordingSystem {
         return quantizationSystem.getMeasureBoundaries(duration * 1000);
     }
     
-    // Get ideal recording duration in complete measures
+    // Recording duration is no longer limited - this method is kept for compatibility but not used
     getIdealRecordingDuration(requestedDuration) {
-        if (this.quantizationEnabled) {
-            return quantizationSystem.getIdealRecordingDuration(requestedDuration);
-        }
+        // Recording continues indefinitely until user stops it
+        // Return the requested duration for compatibility but it won't be used to limit recording
         return requestedDuration;
     }
     

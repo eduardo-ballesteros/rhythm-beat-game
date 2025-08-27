@@ -229,11 +229,7 @@ class RhythmGame {
     }
     
     startRecording(songName, baseScore) {
-        // Adjust recording duration to complete measures if quantization enabled
-        const idealDuration = recordingSystem.getIdealRecordingDuration(gameState.duration);
-        if (idealDuration !== gameState.duration) {
-            gameState.setDuration(idealDuration);
-        }
+        // Recording no longer has duration limits - removed duration adjustment logic
         
         gameState.startRecording(songName, baseScore);
         uiManager.clearPlayArea();
@@ -255,13 +251,10 @@ class RhythmGame {
         const musicalContext = audioSystem.getMusicalContext();
         uiManager.showMusicalContext(musicalContext);
         
-        // Start recording timer
+        // Start recording timer - no auto-stop based on duration
         gameState.gameTimerId = setInterval(() => {
-            const shouldEnd = gameState.updateTimer();
-            if (shouldEnd) {
-                this.endGame();
-                return;
-            }
+            // Update timer (recording time counts up indefinitely)
+            gameState.updateTimer();
             
             // Update measure counter
             const elapsedTime = performance.now() - gameState.gameStartTime;
