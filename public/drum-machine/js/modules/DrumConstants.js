@@ -10,9 +10,7 @@ export const DRUM_MACHINE_CONFIG = {
     MAX_BPM: 180,
     BEATS_PER_MEASURE: 4,
     MEASURES_COUNT: 4,
-    TOTAL_BEATS: 64, // 16 measures for melody
-    DEFAULT_MASTER_VOLUME: -10,
-    DEFAULT_MELODY_VOLUME: -15
+    DEFAULT_MASTER_VOLUME: -10
 };
 
 export const DRUM_NAMES = {
@@ -42,12 +40,6 @@ export const DEFAULT_PATTERN = {
     clap: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 };
 
-export const DEFAULT_MELODY_DATA = {
-    melody: ["C4", "E4", "G4", "C5", "G4", "E4", "F4", "A4", "C5", "F4", "G4", "B4", "D5", "G4", "E4", "C4"],
-    chords: [["C4", "E4", "G4"], ["F4", "A4", "C5"], ["G4", "B4", "D5"], ["C4", "E4", "G4"]],
-    melodyTiming: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5],
-    chordTiming: [0, 2, 4, 6]
-};
 
 export const DRUM_SYNTH_CONFIGS = {
     kick: {
@@ -129,33 +121,6 @@ export const DRUM_SYNTH_CONFIGS = {
     }
 };
 
-export const MELODY_SYNTH_CONFIGS = {
-    melody: {
-        oscillator: { type: "triangle" },
-        envelope: { 
-            attack: 0.05, 
-            decay: 0.3, 
-            sustain: 0.4, 
-            release: 0.8 
-        }
-    },
-    
-    chord: {
-        oscillator: { type: "sawtooth" },
-        envelope: { 
-            attack: 0.3, 
-            decay: 0.4, 
-            sustain: 0.6, 
-            release: 1.2 
-        },
-        filter: { 
-            frequency: 1200, 
-            type: "lowpass", 
-            rolloff: -24 
-        },
-        volume: -8
-    }
-};
 
 export const API_CONFIG = {
     // TODO: Replace with actual API endpoint configuration
@@ -167,18 +132,3 @@ export const API_CONFIG = {
     USE_MOCK_RESPONSES: true
 };
 
-export const CHORD_MAP = {
-    'C': ['C4', 'E4', 'G4'], 
-    'Dm': ['D4', 'F4', 'A4'], 
-    'Em': ['E4', 'G4', 'B4'], 
-    'F': ['F4', 'A4', 'C5'],
-    'G': ['G4', 'B4', 'D5'], 
-    'Am': ['A4', 'C5', 'E5'], 
-    'Bdim': ['B4', 'D5', 'F5'],
-    'C7': ['C4', 'E4', 'G4', 'Bb4'], 
-    'F7': ['F4', 'A4', 'C5', 'Eb5'], 
-    'G7': ['G4', 'B4', 'D5', 'F5'],
-    'Am7': ['A4', 'C5', 'E5', 'G5'], 
-    'Dm7': ['D4', 'F4', 'A4', 'C5'], 
-    'Em7': ['E4', 'G4', 'B4', 'D5']
-};

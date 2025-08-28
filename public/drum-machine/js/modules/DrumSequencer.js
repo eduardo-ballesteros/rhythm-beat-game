@@ -6,9 +6,8 @@
 import { DRUM_MACHINE_CONFIG, DEFAULT_PATTERN } from './DrumConstants.js';
 
 export class DrumSequencer {
-    constructor(drumSounds, melodySystem, onStepChange) {
+    constructor(drumSounds, onStepChange) {
         this.drumSounds = drumSounds;
-        this.melodySystem = melodySystem;
         this.onStepChange = onStepChange || (() => {});
         
         this.isPlaying = false;
@@ -46,27 +45,27 @@ export class DrumSequencer {
             if (!this.drumSounds.isInitialized()) {
                 await this.drumSounds.init();
             }
-            if (!this.melodySystem.isInitialized()) {
-                await this.melodySystem.init();
+
+            // Dispose existing sequence before creating new one
+            if (this.sequence) {
+                this.sequence.dispose();
+                this.sequence = null;
             }
 
             // Create and start sequence
+            // CRITICAL: The callback closure must reference this.pattern directly, not a copy
+            // This ensures real-time updates when pattern changes during playback
             this.sequence = new Tone.Sequence((time, step) => {
                 this.currentStep = step;
                 this.onStepChange(step);
                 
-                // Play active drums for this step
+                // Play active drums for this step - always read current pattern state
+                // DO NOT cache pattern - read directly from this.pattern each time
                 Object.keys(this.pattern).forEach(drum => {
-                    if (this.pattern[drum][step] === 1) {
+                    if (this.pattern[drum] && this.pattern[drum][step] === 1) {
                         this.drumSounds.playDrum(drum, time);
                     }
                 });
-
-                // Play melody and chords if enabled
-                if (this.melodySystem.isEnabled()) {
-                    this.melodySystem.playForStep(step, time);
-                }
-
             }, Array.from({length: DRUM_MACHINE_CONFIG.STEPS_COUNT}, (_, i) => i), "16n");
 
             this.sequence.start(0);
@@ -101,7 +100,6 @@ export class DrumSequencer {
             
             // Stop any lingering sounds
             this.drumSounds.stopAll();
-            this.melodySystem.stopAll();
             
             this.isPlaying = false;
             this.currentStep = 0;
@@ -113,7 +111,7 @@ export class DrumSequencer {
     }
 
     /**
-     * Toggle playback (start/stop)
+     * Toggle playback (pause/resume or start if stopped)
      */
     async toggle() {
         if (this.isPlaying) {
@@ -122,6 +120,22 @@ export class DrumSequencer {
             await this.start();
         }
         return this.isPlaying;
+    }
+
+    /**
+     * Pause playback (preserves current position)
+     */
+    pause() {
+        // Use stop instead of pause to ensure clean state
+        this.stop();
+    }
+
+    /**
+     * Resume playback from paused state
+     */
+    async resume() {
+        // Use start instead of resume to ensure clean state
+        await this.start();
     }
 
     /**
@@ -222,10 +236,9 @@ export class DrumSequencer {
     async restart() {
         if (this.isPlaying) {
             this.stop();
-            // Brief delay to ensure clean stop
-            setTimeout(async () => {
-                await this.start();
-            }, 200);
+            // Brief delay to ensure clean stop and proper disposal
+            await new Promise(resolve => setTimeout(resolve, 50));
+            await this.start();
         }
     }
 

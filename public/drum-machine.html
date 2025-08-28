@@ -28,10 +28,6 @@
             transform: scale(0.95);
         }
         
-        .melody-step {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-        }
         
         .control-button {
             transition: all 0.2s ease;
@@ -113,7 +109,7 @@
                         id="generate-button"
                         class="control-button bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-8 py-4 rounded-xl font-medium text-lg transition-colors"
                     >
-                        Generate Beats + Melody
+                        Generate Beat
                     </button>
                 </div>
                 <div class="text-center mt-4 text-gray-400 text-sm">
@@ -150,25 +146,6 @@
                             </svg>
                         </button>
 
-                        <!-- Melody Toggle Button -->
-                        <button
-                            id="melody-button"
-                            class="control-button p-4 rounded-full transition-colors bg-gray-600 hover:bg-gray-500"
-                            title="Toggle Melody"
-                        >
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                            </svg>
-                        </button>
-
-                        <!-- Generate Melody Button -->
-                        <button
-                            id="generate-melody-button"
-                            class="control-button w-16 h-16 rounded-full transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700"
-                            title="Regenerate Melody"
-                        >
-                            <div class="w-4 h-4 border-2 border-white rounded-full"></div>
-                        </button>
                     </div>
                     
                     <!-- BPM Control -->
@@ -196,9 +173,9 @@
 
             <!-- Instructions -->
             <div class="mt-8 text-center text-gray-300">
-                <p class="text-lg mb-2">Type a description of your desired beat and melody, then click Generate Beats + Melody.</p>
+                <p class="text-lg mb-2">Type a description of your desired drum beat, then click Generate Beat.</p>
                 <p class="text-md mb-2">Click on grid squares to toggle drum hits. The yellow ring shows the current playback position.</p>
-                <p class="text-sm text-gray-400">Use the circle button to regenerate just the melody. Melodies are 64 beats long for variety!</p>
+                <p class="text-sm text-gray-400">Make changes to beats while playing - they'll take effect on the next cycle!</p>
             </div>
         </div>
     </div>

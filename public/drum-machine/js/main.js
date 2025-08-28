@@ -4,7 +4,6 @@
  */
 
 import { DrumSounds } from './modules/DrumSounds.js';
-import { MelodySystem } from './modules/MelodySystem.js';
 import { DrumSequencer } from './modules/DrumSequencer.js';
 import { PatternGenerator } from './modules/PatternGenerator.js';
 import { DrumUI } from './modules/DrumUI.js';
@@ -15,7 +14,6 @@ import { DrumUI } from './modules/DrumUI.js';
 class DrumMachine {
     constructor() {
         this.drumSounds = null;
-        this.melodySystem = null;
         this.sequencer = null;
         this.patternGenerator = null;
         this.ui = null;
@@ -35,7 +33,6 @@ class DrumMachine {
 
             // Initialize audio systems
             this.drumSounds = new DrumSounds();
-            this.melodySystem = new MelodySystem();
             
             // Initialize pattern generator
             this.patternGenerator = new PatternGenerator();
@@ -43,7 +40,6 @@ class DrumMachine {
             // Initialize sequencer with callback for step changes
             this.sequencer = new DrumSequencer(
                 this.drumSounds,
-                this.melodySystem,
                 (step) => {
                     if (this.ui) {
                         this.ui.onStepChange(step);
@@ -54,7 +50,6 @@ class DrumMachine {
             // Initialize UI
             this.ui = new DrumUI(
                 this.sequencer,
-                this.melodySystem,
                 this.patternGenerator
             );
             
@@ -118,10 +113,6 @@ class DrumMachine {
             
             if (this.sequencer) {
                 this.sequencer.dispose();
-            }
-            
-            if (this.melodySystem) {
-                this.melodySystem.dispose();
             }
             
             if (this.drumSounds) {
