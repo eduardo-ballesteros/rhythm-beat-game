@@ -85,8 +85,8 @@ export class DrumSequencer {
 
             this.sequence.start(0);
             
-            // Start melody system if enabled
-            if (this.melodySystem && this.melodySystem.isPlaying()) {
+            // Always start melody system if available
+            if (this.melodySystem) {
                 this.melodySystem.start(this);
             }
             
@@ -340,17 +340,13 @@ export class DrumSequencer {
     }
 
     /**
-     * Toggle melody on/off
-     * @param {boolean} enabled - Whether melody should be enabled
+     * Melody is always enabled - method maintained for compatibility
+     * @param {boolean} enabled - Ignored, melody is always on
      */
     setMelodyEnabled(enabled) {
+        // Melody is always enabled in the simplified system
         if (this.melodySystem) {
-            this.melodySystem.setEnabled(enabled);
-            
-            // If currently playing, restart to sync melody
-            if (this.isPlaying) {
-                this.restart();
-            }
+            this.melodySystem.setEnabled(true);
         }
     }
 
@@ -364,7 +360,7 @@ export class DrumSequencer {
             const music = this.melodySystem.generateMusic(style, key);
             
             // If currently playing, restart to apply new melody
-            if (this.isPlaying && this.melodySystem.isPlaying()) {
+            if (this.isPlaying) {
                 this.restart();
             }
             
@@ -385,11 +381,11 @@ export class DrumSequencer {
     }
 
     /**
-     * Check if melody is currently enabled
+     * Check if melody is currently enabled - always true now
      * @returns {boolean} Whether melody is enabled
      */
     isMelodyEnabled() {
-        return this.melodySystem ? this.melodySystem.isPlaying() : false;
+        return this.melodySystem ? true : false;
     }
 
     /**

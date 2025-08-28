@@ -70,6 +70,9 @@ class DrumMachine {
 
             // Initialize UI components
             this.ui.init();
+            
+            // Initialize with default melody and pattern
+            await this.initializeDefaultMusic();
 
             this.initialized = true;
             console.log('Drum Machine initialized successfully');
@@ -103,6 +106,39 @@ class DrumMachine {
                 errorElement.style.display = 'none';
             }
         }, 5000);
+    }
+
+    /**
+     * Initialize default music (melody and basic pattern)
+     */
+    async initializeDefaultMusic() {
+        try {
+            // Ensure melody system is initialized
+            if (!this.melodySystem.initialized) {
+                await this.melodySystem.init();
+            }
+            
+            // Generate default musical content (pleasant C major progression)
+            const defaultMusic = this.melodySystem.generateMusic('rock', 'C');
+            
+            // Set a nice default drum pattern
+            const defaultPattern = {
+                kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+                snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+                hihat: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+                openhat: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+                crash: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                clap: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            };
+            
+            this.sequencer.setPattern(defaultPattern);
+            
+            // Melody is now always enabled by default
+            console.log('Default music initialized: C major rock progression with basic beat');
+            
+        } catch (error) {
+            console.error('Error initializing default music:', error);
+        }
     }
 
     /**

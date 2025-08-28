@@ -10,8 +10,7 @@ export class MelodySystem {
         this.masterVolume = null;
         this.initialized = false;
         
-        // Current musical state
-        this.isEnabled = false;
+        // Current musical state - melody is always active
         this.currentProgression = null;
         this.currentMelody = null;
         this.currentKey = 'C';
@@ -305,22 +304,19 @@ export class MelodySystem {
     }
 
     /**
-     * Enable/disable melody system
-     * @param {boolean} enabled - Whether to enable melody
+     * Melody is always enabled - this method maintained for compatibility
+     * @param {boolean} enabled - Ignored, melody is always on
      */
     setEnabled(enabled) {
-        this.isEnabled = enabled;
-        
-        if (!enabled) {
-            this.stopAllSounds();
-        }
+        // Melody is always enabled in the simplified system
+        // This method is kept for compatibility but does nothing
     }
 
     /**
-     * Check if melody system is enabled
+     * Check if melody system is enabled - always true now
      */
     isPlaying() {
-        return this.isEnabled;
+        return true;
     }
 
     /**
@@ -373,7 +369,7 @@ export class MelodySystem {
      * @param {Object} drumSequencer - Reference to drum sequencer for timing
      */
     start(drumSequencer) {
-        if (!this.initialized || !this.isEnabled || !this.currentProgression) {
+        if (!this.initialized || !this.currentProgression) {
             return;
         }
 
@@ -384,8 +380,6 @@ export class MelodySystem {
             const progressionLength = this.currentProgression.chords.length;
             
             this.progressionSequence = new Tone.Sequence((time, step) => {
-                if (!this.isEnabled) return;
-
                 // Calculate which chord in the progression
                 const progressionStep = Math.floor(step / 4) % progressionLength;
                 const chord = this.currentProgression.chords[progressionStep];
@@ -398,8 +392,6 @@ export class MelodySystem {
             // Create melody sequence
             if (this.currentMelody) {
                 this.melodySequence = new Tone.Sequence((time, step) => {
-                    if (!this.isEnabled) return;
-
                     const noteIndex = this.currentMelody.pattern[step];
                     if (noteIndex !== undefined && noteIndex >= -12 && noteIndex <= 12) {
                         this.playMelodyNote(noteIndex, this.currentMelody.octave || 5, time);
