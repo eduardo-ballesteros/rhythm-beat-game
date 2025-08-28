@@ -7,6 +7,7 @@ import { DrumSounds } from './modules/DrumSounds.js';
 import { DrumSequencer } from './modules/DrumSequencer.js';
 import { PatternGenerator } from './modules/PatternGenerator.js';
 import { DrumUI } from './modules/DrumUI.js';
+import { MelodySystem } from './modules/MelodySystem.js';
 
 /**
  * Main Drum Machine Application Class
@@ -16,6 +17,7 @@ class DrumMachine {
         this.drumSounds = null;
         this.sequencer = null;
         this.patternGenerator = null;
+        this.melodySystem = null;
         this.ui = null;
         this.initialized = false;
     }
@@ -34,6 +36,9 @@ class DrumMachine {
             // Initialize audio systems
             this.drumSounds = new DrumSounds();
             
+            // Initialize melody system
+            this.melodySystem = new MelodySystem();
+            
             // Initialize pattern generator
             this.patternGenerator = new PatternGenerator();
 
@@ -46,6 +51,9 @@ class DrumMachine {
                     }
                 }
             );
+
+            // Connect melody system to sequencer
+            this.sequencer.setMelodySystem(this.melodySystem);
 
             // Initialize UI
             this.ui = new DrumUI(
@@ -115,6 +123,10 @@ class DrumMachine {
                 this.sequencer.dispose();
             }
             
+            if (this.melodySystem) {
+                this.melodySystem.dispose();
+            }
+            
             if (this.drumSounds) {
                 this.drumSounds.dispose();
             }
@@ -182,6 +194,16 @@ window.testDrumAudio = async function() {
         return await drumMachine.sequencer.testAudio();
     } else {
         console.error("Drum machine not initialized yet");
+        return false;
+    }
+};
+
+// Helper function to test melody system
+window.testMelodyAudio = async function() {
+    if (drumMachine && drumMachine.melodySystem) {
+        return await drumMachine.melodySystem.testMelody();
+    } else {
+        console.error("Melody system not initialized yet");
         return false;
     }
 };

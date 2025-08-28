@@ -16,6 +16,9 @@ export class DrumSequencer {
         this.sequence = null;
         this.pattern = { ...DEFAULT_PATTERN };
         
+        // Melody system integration
+        this.melodySystem = null;
+        
         // Initialize Tone.js Transport
         this.initTransport();
     }
@@ -48,8 +51,15 @@ export class DrumSequencer {
                 await this.drumSounds.init();
             }
 
+            // Initialize melody system if available
+            if (this.melodySystem && !this.melodySystem.initialized) {
+                console.log("Initializing melody system...");
+                await this.melodySystem.init();
+            }
+
             console.log("Audio context state:", Tone.context.state);
             console.log("Drum sounds initialized:", this.drumSounds.isInitialized());
+            console.log("Melody system available:", !!this.melodySystem);
 
             // Dispose existing sequence before creating new one
             if (this.sequence) {
@@ -74,6 +84,12 @@ export class DrumSequencer {
             }, Array.from({length: DRUM_MACHINE_CONFIG.STEPS_COUNT}, (_, i) => i), "16n");
 
             this.sequence.start(0);
+            
+            // Start melody system if enabled
+            if (this.melodySystem && this.melodySystem.isPlaying()) {
+                this.melodySystem.start(this);
+            }
+            
             Tone.Transport.start();
             this.isPlaying = true;
             
@@ -101,6 +117,11 @@ export class DrumSequencer {
             if (this.sequence) {
                 this.sequence.dispose();
                 this.sequence = null;
+            }
+            
+            // Stop melody system
+            if (this.melodySystem) {
+                this.melodySystem.stop();
             }
             
             // Stop any lingering sounds
@@ -303,10 +324,85 @@ export class DrumSequencer {
     }
 
     /**
+     * Set melody system reference
+     * @param {MelodySystem} melodySystem - Melody system instance
+     */
+    setMelodySystem(melodySystem) {
+        this.melodySystem = melodySystem;
+    }
+
+    /**
+     * Get melody system reference
+     * @returns {MelodySystem|null} Current melody system
+     */
+    getMelodySystem() {
+        return this.melodySystem;
+    }
+
+    /**
+     * Toggle melody on/off
+     * @param {boolean} enabled - Whether melody should be enabled
+     */
+    setMelodyEnabled(enabled) {
+        if (this.melodySystem) {
+            this.melodySystem.setEnabled(enabled);
+            
+            // If currently playing, restart to sync melody
+            if (this.isPlaying) {
+                this.restart();
+            }
+        }
+    }
+
+    /**
+     * Generate new melody for current style
+     * @param {string} style - Musical style
+     * @param {string} key - Musical key
+     */
+    generateNewMelody(style = 'rock', key = 'C') {
+        if (this.melodySystem) {
+            const music = this.melodySystem.generateMusic(style, key);
+            
+            // If currently playing, restart to apply new melody
+            if (this.isPlaying && this.melodySystem.isPlaying()) {
+                this.restart();
+            }
+            
+            return music;
+        }
+        return null;
+    }
+
+    /**
+     * Get current chord name from melody system
+     * @returns {string} Current chord name
+     */
+    getCurrentChordName() {
+        if (this.melodySystem) {
+            return this.melodySystem.getCurrentChordName();
+        }
+        return '';
+    }
+
+    /**
+     * Check if melody is currently enabled
+     * @returns {boolean} Whether melody is enabled
+     */
+    isMelodyEnabled() {
+        return this.melodySystem ? this.melodySystem.isPlaying() : false;
+    }
+
+    /**
      * Dispose of sequencer and clean up resources
      */
     dispose() {
         this.stop();
+        
+        // Dispose melody system
+        if (this.melodySystem) {
+            this.melodySystem.dispose();
+            this.melodySystem = null;
+        }
         
         // Clean up Transport (but don't dispose it as it's global)
         Tone.Transport.cancel();

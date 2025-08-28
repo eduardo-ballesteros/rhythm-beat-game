@@ -21,6 +21,8 @@ export class DrumUI {
         this.handleGeneratePattern = this.handleGeneratePattern.bind(this);
         this.handleInputKeyPress = this.handleInputKeyPress.bind(this);
         this.onStepChange = this.onStepChange.bind(this);
+        this.handleMelodyToggle = this.handleMelodyToggle.bind(this);
+        this.handleNewMelody = this.handleNewMelody.bind(this);
     }
 
     /**
@@ -51,7 +53,10 @@ export class DrumUI {
             bpmDisplay: document.getElementById('bpm-display'),
             userInput: document.getElementById('user-input'),
             drumGrid: document.getElementById('drum-grid'),
-            stepNumbers: document.getElementById('step-numbers')
+            stepNumbers: document.getElementById('step-numbers'),
+            melodyToggle: document.getElementById('melody-toggle'),
+            newMelodyButton: document.getElementById('new-melody-button'),
+            chordDisplay: document.getElementById('chord-display')
         };
     }
 
@@ -150,6 +155,14 @@ export class DrumUI {
         }
         if (this.elements.generateButton) {
             this.elements.generateButton.addEventListener('click', this.handleGeneratePattern);
+        }
+
+        // Melody controls
+        if (this.elements.melodyToggle) {
+            this.elements.melodyToggle.addEventListener('click', this.handleMelodyToggle);
+        }
+        if (this.elements.newMelodyButton) {
+            this.elements.newMelodyButton.addEventListener('click', this.handleNewMelody);
         }
 
         // BPM control
@@ -280,6 +293,70 @@ export class DrumUI {
     }
 
     /**
+     * Handle melody toggle button
+     */
+    async handleMelodyToggle() {
+        try {
+            // Ensure audio context is activated
+            if (Tone.context.state !== 'running') {
+                console.log("Activating audio context on melody toggle...");
+                await Tone.start();
+            }
+
+            const currentlyEnabled = this.sequencer.isMelodyEnabled();
+            this.sequencer.setMelodyEnabled(!currentlyEnabled);
+            this.updateMelodyControls();
+
+        } catch (error) {
+            console.error('Error toggling melody:', error);
+        }
+    }
+
+    /**
+     * Handle new melody generation
+     */
+    async handleNewMelody() {
+        try {
+            // Ensure audio context is activated
+            if (Tone.context.state !== 'running') {
+                console.log("Activating audio context on melody generation...");
+                await Tone.start();
+            }
+
+            // Determine style from user input or default to rock
+            const userInput = this.elements.userInput?.value.trim().toLowerCase() || '';
+            let style = 'rock';
+
+            if (userInput.includes('jazz')) style = 'jazz';
+            else if (userInput.includes('blues')) style = 'blues';
+            else if (userInput.includes('folk') || userInput.includes('country')) style = 'folk';
+            else if (userInput.includes('classical') || userInput.includes('bach') || userInput.includes('mozart')) style = 'classical';
+            else if (userInput.includes('electronic') || userInput.includes('techno') || userInput.includes('house')) style = 'electronic';
+            else if (userInput.includes('latin') || userInput.includes('salsa')) style = 'folk';
+            else if (userInput.includes('modal') || userInput.includes('dorian')) style = 'modal';
+
+            // Random key selection (common keys)
+            const keys = ['C', 'F', 'G', 'Am', 'Dm'];
+            const randomKey = keys[Math.floor(Math.random() * keys.length)];
+
+            const music = this.sequencer.generateNewMelody(style, randomKey);
+            
+            if (music) {
+                console.log(`Generated new ${style} melody in ${randomKey}`);
+                // Enable melody if it wasn't already
+                if (!this.sequencer.isMelodyEnabled()) {
+                    this.sequencer.setMelodyEnabled(true);
+                }
+            }
+
+            this.updateMelodyControls();
+
+        } catch (error) {
+            console.error('Error generating new melody:', error);
+        }
+    }
+
+    /**
      * Step change callback from sequencer
      * @param {number} step - Current step
      */
@@ -295,6 +372,7 @@ export class DrumUI {
         this.updateBpmDisplay();
         this.updateDrumGrid();
         this.updateGenerateButton(false);
+        this.updateMelodyControls();
     }
 
     /**
@@ -402,6 +480,42 @@ export class DrumUI {
         }
     }
 
+    /**
+     * Update melody controls state
+     */
+    updateMelodyControls() {
+        // Update melody toggle button
+        if (this.elements.melodyToggle) {
+            const isEnabled = this.sequencer.isMelodyEnabled();
+            
+            if (isEnabled) {
+                this.elements.melodyToggle.textContent = 'Melody: ON';
+                this.elements.melodyToggle.className = 'control-button bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium text-sm transition-colors';
+            } else {
+                this.elements.melodyToggle.textContent = 'Melody: OFF';
+                this.elements.melodyToggle.className = 'control-button bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-lg font-medium text-sm transition-colors';
+            }
+        }
+
+        // Update chord display
+        if (this.elements.chordDisplay) {
+            const chordName = this.sequencer.getCurrentChordName();
+            this.elements.chordDisplay.textContent = chordName || '---';
+        }
+
+        // Update new melody button state
+        if (this.elements.newMelodyButton) {
+            const melodySystem = this.sequencer.getMelodySystem();
+            if (melodySystem && melodySystem.initialized) {
+                this.elements.newMelodyButton.disabled = false;
+                this.elements.newMelodyButton.className = 'control-button bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-medium text-sm transition-colors';
+            } else {
+                this.elements.newMelodyButton.disabled = true;
+                this.elements.newMelodyButton.className = 'control-button bg-gray-600 cursor-not-allowed px-6 py-3 rounded-lg font-medium text-sm transition-colors';
+            }
+        }
+    }
+
 
     /**
      * Dispose of UI and clean up event listeners
@@ -416,6 +530,12 @@ export class DrumUI {
         }
         if (this.elements.generateButton) {
             this.elements.generateButton.removeEventListener('click', this.handleGeneratePattern);
+        }
+        if (this.elements.melodyToggle) {
+            this.elements.melodyToggle.removeEventListener('click', this.handleMelodyToggle);
+        }
+        if (this.elements.newMelodyButton) {
+            this.elements.newMelodyButton.removeEventListener('click', this.handleNewMelody);
         }
         if (this.elements.bpmSlider) {
             this.elements.bpmSlider.removeEventListener('input', this.handleBpmChange);

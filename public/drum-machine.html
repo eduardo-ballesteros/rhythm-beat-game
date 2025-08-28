@@ -146,20 +146,45 @@
                             </svg>
                         </button>
 
+                        <!-- Melody Controls -->
+                        <div class="flex items-center gap-2 bg-gray-800 rounded-xl px-4 py-2 border border-gray-600">
+                            <button
+                                id="melody-toggle"
+                                class="control-button bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-lg font-medium text-sm transition-colors"
+                                title="Toggle Melody On/Off"
+                            >
+                                Melody: OFF
+                            </button>
+                            <button
+                                id="new-melody-button"
+                                class="control-button bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-medium text-sm transition-colors"
+                                title="Generate New Melody"
+                            >
+                                New Melody
+                            </button>
+                        </div>
                     </div>
                     
-                    <!-- BPM Control -->
-                    <div class="flex items-center gap-4 bg-gray-800 rounded-xl px-6 py-3 border border-gray-600">
-                        <label class="text-lg font-medium text-yellow-400">BPM:</label>
-                        <input
-                            type="range"
-                            id="bpm-slider"
-                            min="60"
-                            max="180"
-                            value="120"
-                            class="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        <span id="bpm-display" class="text-lg font-mono w-12 text-center text-white">120</span>
+                    <div class="flex items-center gap-4">
+                        <!-- Current Chord Display -->
+                        <div class="bg-gray-800 rounded-xl px-6 py-3 border border-gray-600">
+                            <label class="text-lg font-medium text-cyan-400 mr-2">Chord:</label>
+                            <span id="chord-display" class="text-lg font-mono text-white">---</span>
+                        </div>
+                        
+                        <!-- BPM Control -->
+                        <div class="bg-gray-800 rounded-xl px-6 py-3 border border-gray-600">
+                            <label class="text-lg font-medium text-yellow-400 mr-2">BPM:</label>
+                            <input
+                                type="range"
+                                id="bpm-slider"
+                                min="60"
+                                max="180"
+                                value="120"
+                                class="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider mx-2"
+                            />
+                            <span id="bpm-display" class="text-lg font-mono w-12 text-center text-white">120</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -175,7 +200,9 @@
             <div class="mt-8 text-center text-gray-300">
                 <p class="text-lg mb-2">Type a description of your desired drum beat, then click Generate Beat.</p>
                 <p class="text-md mb-2">Click on grid squares to toggle drum hits. The yellow ring shows the current playback position.</p>
-                <p class="text-sm text-gray-400">Make changes to beats while playing - they'll take effect on the next cycle!</p>
+                <p class="text-md mb-2"><span class="text-cyan-400 font-semibold">NEW:</span> Toggle melody on/off and generate new melodies with rich chord progressions!</p>
+                <p class="text-sm text-gray-400">Try descriptions like: "jazz with piano chords", "blues with guitar", "classical melody", "electronic arpeggios"</p>
+                <p class="text-sm text-gray-400 mt-2">Make changes to beats while playing - they'll take effect on the next cycle!</p>
             </div>
         </div>
     </div>
