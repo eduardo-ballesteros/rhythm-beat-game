@@ -167,13 +167,31 @@ export class DrumUI {
      * Handle step button clicks
      * @param {Event} event - Click event
      */
-    handleStepClick(event) {
+    async handleStepClick(event) {
         const drum = event.target.dataset.drum;
         const step = parseInt(event.target.dataset.step);
         
         if (drum && !isNaN(step)) {
+            // Ensure audio context is activated on user interaction
+            if (Tone.context.state !== 'running') {
+                console.log("Activating audio context on step click...");
+                await Tone.start();
+            }
+            
             this.sequencer.toggleStep(drum, step);
             this.updateStepButton(drum, step);
+            
+            // Play the drum sound immediately for user feedback
+            if (this.sequencer.drumSounds && this.sequencer.drumSounds.isInitialized()) {
+                try {
+                    // Check if step is now active (just turned on)
+                    if (this.sequencer.isStepActive(drum, step)) {
+                        this.sequencer.drumSounds.playDrum(drum);
+                    }
+                } catch (error) {
+                    console.error('Error playing drum sound:', error);
+                }
+            }
         }
     }
 
@@ -182,6 +200,12 @@ export class DrumUI {
      */
     async handlePlayPause() {
         try {
+            // Ensure audio context is activated on first user interaction
+            if (Tone.context.state !== 'running') {
+                console.log("Activating audio context on user interaction...");
+                await Tone.start();
+            }
+            
             await this.sequencer.toggle();
             this.updatePlayButton();
         } catch (error) {

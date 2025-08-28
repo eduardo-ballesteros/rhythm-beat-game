@@ -176,5 +176,15 @@ window.addEventListener('beforeunload', cleanup);
 // Export for debugging
 window.drumMachine = drumMachine;
 
+// Helper function to test audio system
+window.testDrumAudio = async function() {
+    if (drumMachine && drumMachine.sequencer) {
+        return await drumMachine.sequencer.testAudio();
+    } else {
+        console.error("Drum machine not initialized yet");
+        return false;
+    }
+};
+
 // Also export the DrumMachine class for potential external use
 export { DrumMachine };

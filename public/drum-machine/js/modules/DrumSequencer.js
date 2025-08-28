@@ -36,15 +36,20 @@ export class DrumSequencer {
         }
 
         try {
-            // Ensure audio context is started
+            // Ensure audio context is started FIRST
             if (Tone.context.state !== 'running') {
+                console.log("Starting audio context in DrumSequencer...");
                 await Tone.start();
             }
 
-            // Ensure audio systems are initialized
+            // Ensure audio systems are initialized AFTER context is running
             if (!this.drumSounds.isInitialized()) {
+                console.log("Initializing drum sounds...");
                 await this.drumSounds.init();
             }
+
+            console.log("Audio context state:", Tone.context.state);
+            console.log("Drum sounds initialized:", this.drumSounds.isInitialized());
 
             // Dispose existing sequence before creating new one
             if (this.sequence) {
@@ -264,6 +269,37 @@ export class DrumSequencer {
      */
     setMasterVolume(volumeDb) {
         this.drumSounds.setMasterVolume(volumeDb);
+    }
+
+    /**
+     * Test audio system (for debugging)
+     */
+    async testAudio() {
+        try {
+            console.log("Testing audio system...");
+            
+            // Ensure audio context is started
+            if (Tone.context.state !== 'running') {
+                console.log("Starting audio context for test...");
+                await Tone.start();
+            }
+
+            // Ensure drum sounds are initialized
+            if (!this.drumSounds.isInitialized()) {
+                console.log("Initializing drum sounds for test...");
+                await this.drumSounds.init();
+            }
+
+            // Test kick drum
+            console.log("Testing kick drum...");
+            await this.drumSounds.testSound();
+            
+            console.log("Audio test completed.");
+            return true;
+        } catch (error) {
+            console.error("Audio test failed:", error);
+            return false;
+        }
     }
 
     /**

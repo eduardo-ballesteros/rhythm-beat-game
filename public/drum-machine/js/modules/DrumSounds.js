@@ -21,22 +21,28 @@ export class DrumSounds {
         }
 
         try {
+            // Ensure audio context is started first
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+                console.log("Audio context started in DrumSounds.init()");
+            }
+
             // Create master gain for volume control
             this.masterGain = new Tone.Gain(0.5).toDestination();
 
-            // Create drum samplers with synthesized sounds
+            // Create drum samplers with synthesized sounds - connect through master gain
             this.samplers = {
                 kick: new Tone.MembraneSynth({
                     pitchDecay: DRUM_SYNTH_CONFIGS.kick.pitchDecay,
                     octaves: DRUM_SYNTH_CONFIGS.kick.octaves,
                     oscillator: DRUM_SYNTH_CONFIGS.kick.oscillator,
                     envelope: DRUM_SYNTH_CONFIGS.kick.envelope
-                }).toDestination(),
+                }).connect(this.masterGain),
                 
                 snare: new Tone.NoiseSynth({
                     noise: DRUM_SYNTH_CONFIGS.snare.noise,
                     envelope: DRUM_SYNTH_CONFIGS.snare.envelope
-                }).toDestination(),
+                }).connect(this.masterGain),
                 
                 hihat: new Tone.MetalSynth({
                     frequency: DRUM_SYNTH_CONFIGS.hihat.frequency,
@@ -45,7 +51,7 @@ export class DrumSounds {
                     modulationIndex: DRUM_SYNTH_CONFIGS.hihat.modulationIndex,
                     resonance: DRUM_SYNTH_CONFIGS.hihat.resonance,
                     octaves: DRUM_SYNTH_CONFIGS.hihat.octaves
-                }).toDestination(),
+                }).connect(this.masterGain),
                 
                 openhat: new Tone.MetalSynth({
                     frequency: DRUM_SYNTH_CONFIGS.openhat.frequency,
@@ -54,7 +60,7 @@ export class DrumSounds {
                     modulationIndex: DRUM_SYNTH_CONFIGS.openhat.modulationIndex,
                     resonance: DRUM_SYNTH_CONFIGS.openhat.resonance,
                     octaves: DRUM_SYNTH_CONFIGS.openhat.octaves
-                }).toDestination(),
+                }).connect(this.masterGain),
                 
                 crash: new Tone.MetalSynth({
                     frequency: DRUM_SYNTH_CONFIGS.crash.frequency,
@@ -63,12 +69,12 @@ export class DrumSounds {
                     modulationIndex: DRUM_SYNTH_CONFIGS.crash.modulationIndex,
                     resonance: DRUM_SYNTH_CONFIGS.crash.resonance,
                     octaves: DRUM_SYNTH_CONFIGS.crash.octaves
-                }).toDestination(),
+                }).connect(this.masterGain),
                 
                 clap: new Tone.NoiseSynth({
                     noise: DRUM_SYNTH_CONFIGS.clap.noise,
                     envelope: DRUM_SYNTH_CONFIGS.clap.envelope
-                }).toDestination()
+                }).connect(this.masterGain)
             };
 
             // Set volumes for each drum
@@ -80,8 +86,15 @@ export class DrumSounds {
             this.samplers.clap.volume.value = DRUM_SYNTH_CONFIGS.clap.volume;
 
             this.initialized = true;
+            console.log("Drum sounds initialized successfully. Audio context state:", Tone.context.state);
+            
         } catch (error) {
             console.error('Error initializing drum sounds:', error);
+            console.error('Audio context state:', Tone.context.state);
+            console.error('Browser audio support:', {
+                webAudio: !!(window.AudioContext || window.webkitAudioContext),
+                tonejs: typeof Tone !== 'undefined'
+            });
             throw error;
         }
     }
