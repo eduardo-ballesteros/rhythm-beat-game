@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Drum Machine - Rhythm Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Bangers', cursive;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+        }
+        
+        .drum-machine-container {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .step-button {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .step-button:active {
+            transform: scale(0.95);
+        }
+        
+        .melody-step {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        
+        .control-button {
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .control-button:active {
+            transform: translateY(0);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .input-glow:focus {
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+            border-color: #667eea;
+        }
+        
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .step-playing {
+            animation: pulse-ring 0.5s ease-in-out;
+        }
+        
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+        }
+        
+        .nav-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white">
+    <!-- Navigation link back to main game -->
+    <a href="../index.html" class="nav-link bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-xl transition-colors border-2 border-gray-600 hover:border-gray-500">
+        ← Back to Game
+    </a>
+
+    <div class="min-h-screen p-6 flex items-center justify-center">
+        <div class="max-w-6xl mx-auto w-full">
+            <!-- Title -->
+            <h1 class="text-6xl font-bold text-center mb-8 gradient-text drop-shadow-lg">
+                AI Drum Machine
+            </h1>
+
+            <!-- Input Section -->
+            <div class="drum-machine-container rounded-2xl p-6 mb-8">
+                <h2 class="text-2xl font-semibold mb-4 text-center text-yellow-400">Describe Your Beat</h2>
+                <div class="flex gap-4 max-w-4xl mx-auto">
+                    <input
+                        type="text"
+                        id="user-input"
+                        placeholder="e.g., 'four on the floor house beat', 'funky breakbeat', 'simple rock pattern'"
+                        class="flex-1 bg-gray-800 border-2 border-gray-600 rounded-xl px-6 py-4 text-white text-lg placeholder-gray-400 focus:outline-none input-glow transition-all"
+                    />
+                    <button
+                        id="generate-button"
+                        class="control-button bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-8 py-4 rounded-xl font-medium text-lg transition-colors"
+                    >
+                        Generate Beats + Melody
+                    </button>
+                </div>
+                <div class="text-center mt-4 text-gray-400 text-sm">
+                    <p>Try: "boom bap hip hop", "minimal techno", "latin percussion", "punk rock beat"</p>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="drum-machine-container rounded-2xl p-6 mb-8">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div class="flex items-center gap-4">
+                        <!-- Play/Pause Button -->
+                        <button
+                            id="play-button"
+                            class="control-button bg-green-600 hover:bg-green-700 p-4 rounded-full transition-colors text-white"
+                            title="Play/Pause"
+                        >
+                            <svg class="play-icon w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                            <svg class="pause-icon w-8 h-8 hidden" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
+                        <!-- Reset Button -->
+                        <button
+                            id="reset-button"
+                            class="control-button bg-red-600 hover:bg-red-700 p-4 rounded-full transition-colors text-white"
+                            title="Stop and Clear"
+                        >
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+
+                        <!-- Melody Toggle Button -->
+                        <button
+                            id="melody-button"
+                            class="control-button p-4 rounded-full transition-colors bg-gray-600 hover:bg-gray-500"
+                            title="Toggle Melody"
+                        >
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                            </svg>
+                        </button>
+
+                        <!-- Generate Melody Button -->
+                        <button
+                            id="generate-melody-button"
+                            class="control-button w-16 h-16 rounded-full transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700"
+                            title="Regenerate Melody"
+                        >
+                            <div class="w-4 h-4 border-2 border-white rounded-full"></div>
+                        </button>
+                    </div>
+                    
+                    <!-- BPM Control -->
+                    <div class="flex items-center gap-4 bg-gray-800 rounded-xl px-6 py-3 border border-gray-600">
+                        <label class="text-lg font-medium text-yellow-400">BPM:</label>
+                        <input
+                            type="range"
+                            id="bpm-slider"
+                            min="60"
+                            max="180"
+                            value="120"
+                            class="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                        />
+                        <span id="bpm-display" class="text-lg font-mono w-12 text-center text-white">120</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drum Grid -->
+            <div class="drum-machine-container rounded-2xl p-6 overflow-x-auto">
+                <div id="drum-grid" class="min-w-max">
+                    <!-- Grid will be generated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="mt-8 text-center text-gray-300">
+                <p class="text-lg mb-2">Type a description of your desired beat and melody, then click Generate Beats + Melody.</p>
+                <p class="text-md mb-2">Click on grid squares to toggle drum hits. The yellow ring shows the current playback position.</p>
+                <p class="text-sm text-gray-400">Use the circle button to regenerate just the melody. Melodies are 64 beats long for variety!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Slider Styles -->
+    <style>
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 0 2px 0 rgba(0,0,0,0.2);
+        }
+        
+        .slider::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 2px 0 rgba(0,0,0,0.2);
+        }
+        
+        .slider::-webkit-slider-track {
+            height: 8px;
+            border-radius: 4px;
+            background: #374151;
+        }
+        
+        .slider::-moz-range-track {
+            height: 8px;
+            border-radius: 4px;
+            background: #374151;
+        }
+    </style>
+
+    <!-- Main JavaScript Application -->
+    <script type="module" src="drum-machine/js/main.js"></script>
+</body>
+</html>

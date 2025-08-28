@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drum Machine Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+</head>
+<body>
+    <h1>Drum Machine Module Test</h1>
+    <button id="test-sounds">Test Drum Sounds</button>
+    <button id="test-melody">Test Melody System</button>
+    <div id="test-results"></div>
+
+    <script type="module">
+        import { DrumSounds } from './public/drum-machine/js/modules/DrumSounds.js';
+        import { MelodySystem } from './public/drum-machine/js/modules/MelodySystem.js';
+        import { PatternGenerator } from './public/drum-machine/js/modules/PatternGenerator.js';
+
+        const results = document.getElementById('test-results');
+
+        // Test Drum Sounds
+        document.getElementById('test-sounds').addEventListener('click', async () => {
+            try {
+                const drumSounds = new DrumSounds();
+                await drumSounds.init();
+                
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                }
+                
+                drumSounds.playDrum('kick');
+                setTimeout(() => drumSounds.playDrum('snare'), 200);
+                setTimeout(() => drumSounds.playDrum('hihat'), 400);
+                
+                results.innerHTML += '<p>✅ Drum sounds test passed</p>';
+            } catch (error) {
+                results.innerHTML += `<p>❌ Drum sounds test failed: ${error.message}</p>`;
+            }
+        });
+
+        // Test Melody System
+        document.getElementById('test-melody').addEventListener('click', async () => {
+            try {
+                const melodySystem = new MelodySystem();
+                await melodySystem.init();
+                
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                }
+                
+                const isInitialized = melodySystem.isInitialized();
+                const hasValidMelody = melodySystem.hasValidMelody();
+                
+                results.innerHTML += `<p>✅ Melody system test passed - Initialized: ${isInitialized}, Has melody: ${hasValidMelody}</p>`;
+            } catch (error) {
+                results.innerHTML += `<p>❌ Melody system test failed: ${error.message}</p>`;
+            }
+        });
+
+        // Test Pattern Generator
+        (async () => {
+            try {
+                const patternGenerator = new PatternGenerator();
+                const mockPattern = await patternGenerator.generateDrumPattern('house beat');
+                const mockMelody = await patternGenerator.generateMelody('electronic');
+                
+                results.innerHTML += '<p>✅ Pattern generator test passed</p>';
+                results.innerHTML += `<p>Generated pattern keys: ${Object.keys(mockPattern)}</p>`;
+                results.innerHTML += `<p>Generated melody keys: ${Object.keys(mockMelody)}</p>`;
+            } catch (error) {
+                results.innerHTML += `<p>❌ Pattern generator test failed: ${error.message}</p>`;
+            }
+        })();
+    </script>
+</body>
+</html>
